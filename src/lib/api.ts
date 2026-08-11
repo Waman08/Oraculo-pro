@@ -502,3 +502,30 @@ export async function searchDexScreener(query: string): Promise<DexScreenerPair[
     return [];
   }
 }
+
+/**
+ * Fetch backtest results from the Python backend.
+ * Returns metrics, trades, and equity curve for charting.
+ */
+export async function fetchBacktestFromServer(
+  symbol: string,
+  timeframe: string = '1D',
+  limit: number = 100,
+): Promise<any | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const res = await fetch(
+      `${PYTHON_API_URL}/api/backtest?symbol=${symbol.toUpperCase()}&timeframe=${timeframe}&limit=${limit}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+

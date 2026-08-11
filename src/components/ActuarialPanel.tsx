@@ -1,11 +1,16 @@
 "use client";
 
-import React from 'react';
-import { Shield, BarChart2, Activity, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { Shield, BarChart2, Activity, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
+import { createChart, ColorType, IChartApi } from 'lightweight-charts';
 
 interface ActuarialData {
   riskMetrics: { var95: number; cvar95: number; annualVolatility: number };
-  monteCarlo7D: { p10: number; p50: number; p90: number };
+  monteCarlo7D: {
+    p10: number; p50: number; p90: number;
+    paths?: { p10: number[]; p50: number[]; p90: number[] };
+    jump_params?: { lambda: number; mu_j: number; sigma_j: number };
+  };
   markovRegime: { bull: number; bear: number; sideways: number };
   dataAvailable: boolean;
 }
@@ -14,6 +19,97 @@ function fmtPrice(p: number): string {
   if (p >= 1000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 1) return '$' + p.toFixed(2);
   return '$' + p.toFixed(6);
+}
+
+function MonteCarloChart({ paths, currentPrice }: { paths: { p10: number[]; p50: number[]; p90: number[] }; currentPrice: number }) {
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+
+  useEffect(() => {
+    if (!chartContainerRef.current || !paths || !paths.p50 || paths.p50.length === 0) return;
+
+    if (chartRef.current) {
+      chartRef.current.remove();
+    }
+
+    const chart = createChart(chartContainerRef.current, {
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#6B7280',
+      },
+      grid: {
+        vertLines: { color: 'rgba(31, 41, 55, 0.3)' },
+        horzLines: { color: 'rgba(31, 41, 55, 0.3)' },
+      },
+      width: chartContainerRef.current.clientWidth,
+      height: 160,
+      timeScale: {
+        visible: false,
+      },
+      rightPriceScale: {
+        borderVisible: false,
+      },
+    });
+
+    chartRef.current = chart;
+
+    // P90 (Bull) - top area
+    const p90Series = chart.addAreaSeries({
+      lineColor: 'rgba(16, 185, 129, 0.6)',
+      topColor: 'rgba(16, 185, 129, 0.15)',
+      bottomColor: 'rgba(16, 185, 129, 0.02)',
+      lineWidth: 1,
+    });
+
+    // P50 (Base) - median line
+    const p50Series = chart.addLineSeries({
+      color: '#F59E0B',
+      lineWidth: 2,
+      lineStyle: 0,
+    });
+
+    // P10 (Bear) - bottom area
+    const p10Series = chart.addAreaSeries({
+      lineColor: 'rgba(239, 68, 68, 0.6)',
+      topColor: 'rgba(239, 68, 68, 0.02)',
+      bottomColor: 'rgba(239, 68, 68, 0.15)',
+      lineWidth: 1,
+      invertFilledArea: true,
+    });
+
+    // Create time entries (Day 0 to Day N)
+    const today = new Date();
+    const makeData = (values: number[]) =>
+      values.map((v, i) => {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        return {
+          time: d.toISOString().split('T')[0] as any,
+          value: v,
+        };
+      });
+
+    p90Series.setData(makeData(paths.p90));
+    p50Series.setData(makeData(paths.p50));
+    p10Series.setData(makeData(paths.p10));
+
+    chart.timeScale().fitContent();
+
+    const handleResize = () => {
+      if (chartRef.current && chartContainerRef.current) {
+        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, [paths, currentPrice]);
+
+  return <div className="w-full h-[160px]" ref={chartContainerRef} />;
 }
 
 export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial: any; currentPrice: number }) {
@@ -66,6 +162,8 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
   const p10 = data.monteCarlo7D?.p10 ?? currentPrice * 0.9;
   const p50 = data.monteCarlo7D?.p50 ?? currentPrice;
   const p90 = data.monteCarlo7D?.p90 ?? currentPrice * 1.1;
+  const paths = data.monteCarlo7D?.paths;
+  const jumpParams = data.monteCarlo7D?.jump_params;
 
   // Visual range position (0% - 100%)
   const minP = Math.min(p10, currentPrice);
@@ -101,15 +199,29 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
             ANÁLISIS ACTUARIAL DE RIESGO
           </h3>
         </div>
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-          style={{
-            backgroundColor: 'var(--signal-buy-dim)',
-            color: 'var(--accent-gold)',
-          }}
-        >
-          <Activity size={12} style={{ color: 'var(--accent-gold)' }} />
-          <span>Modelo Cuantitativo</span>
+        <div className="flex items-center gap-2">
+          {jumpParams && jumpParams.lambda > 0 && (
+            <div
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+              style={{
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                color: '#EF4444',
+              }}
+            >
+              <Zap size={10} />
+              <span>Jump λ={jumpParams.lambda.toFixed(3)}</span>
+            </div>
+          )}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+            style={{
+              backgroundColor: 'var(--signal-buy-dim)',
+              color: 'var(--accent-gold)',
+            }}
+          >
+            <Activity size={12} style={{ color: 'var(--accent-gold)' }} />
+            <span>Merton Jump-Diffusion</span>
+          </div>
         </div>
       </div>
 
@@ -160,7 +272,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
               <div className="flex items-center gap-2">
                 <BarChart2 size={15} style={{ color: 'var(--accent-gold)' }} />
                 <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  Monte Carlo 7D (Escenarios de Precio)
+                  Monte Carlo 7D — Jump-Diffusion
                 </span>
               </div>
               <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
@@ -169,7 +281,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
             </div>
 
             {/* Scenarios grid */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               {/* p10 Bear */}
               <div className="p-2.5 rounded-lg border text-center" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--bg-secondary)' }}>
                 <div className="flex items-center justify-center gap-1 mb-1">
@@ -205,35 +317,40 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
             </div>
           </div>
 
-          {/* Visual Range Bar */}
-          <div className="space-y-1.5 pt-1">
-            <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-              {/* Range gradient background */}
-              <div
-                className="absolute inset-0"
-                style={{
-                  background: 'linear-gradient(to right, var(--signal-sell-dim), var(--accent-gold), var(--signal-buy-dim))',
-                  opacity: 0.6,
-                }}
-              />
-              {/* Current Price Marker Pin */}
-              <div
-                className="absolute top-0 h-full w-2 -ml-1 rounded-full shadow-md transition-all duration-500"
-                style={{
-                  left: `${pricePositionPct}%`,
-                  backgroundColor: 'var(--text-primary)',
-                  boxShadow: '0 0 8px var(--accent-gold)',
-                }}
-              />
+          {/* Monte Carlo Cone Chart */}
+          {paths && paths.p50 && paths.p50.length > 0 ? (
+            <div className="mt-1 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--bg-tertiary)' }}>
+              <MonteCarloChart paths={paths} currentPrice={currentPrice} />
             </div>
-            <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              <span>Min 7D ({fmtPrice(p10)})</span>
-              <span className="font-semibold" style={{ color: 'var(--accent-gold)' }}>
-                Posición relativa: {pricePositionPct.toFixed(0)}%
-              </span>
-              <span>Max 7D ({fmtPrice(p90)})</span>
+          ) : (
+            /* Fallback: Visual Range Bar */
+            <div className="space-y-1.5 pt-1">
+              <div className="relative h-3 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background: 'linear-gradient(to right, var(--signal-sell-dim), var(--accent-gold), var(--signal-buy-dim))',
+                    opacity: 0.6,
+                  }}
+                />
+                <div
+                  className="absolute top-0 h-full w-2 -ml-1 rounded-full shadow-md transition-all duration-500"
+                  style={{
+                    left: `${pricePositionPct}%`,
+                    backgroundColor: 'var(--text-primary)',
+                    boxShadow: '0 0 8px var(--accent-gold)',
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                <span>Min 7D ({fmtPrice(p10)})</span>
+                <span className="font-semibold" style={{ color: 'var(--accent-gold)' }}>
+                  Posición relativa: {pricePositionPct.toFixed(0)}%
+                </span>
+                <span>Max 7D ({fmtPrice(p90)})</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

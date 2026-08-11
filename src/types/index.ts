@@ -97,6 +97,16 @@ export interface ActuarialData {
     p10: number;
     p50: number;
     p90: number;
+    paths?: {
+      p10: number[];
+      p50: number[];
+      p90: number[];
+    };
+    jump_params?: {
+      lambda: number;
+      mu_j: number;
+      sigma_j: number;
+    };
   };
   markovRegime: {
     bull: number;
@@ -104,6 +114,31 @@ export interface ActuarialData {
     sideways: number;
   };
   dataAvailable: boolean;
+}
+
+// ---- Backtester ----
+
+export interface BacktestResult {
+  metrics: {
+    total_return_percent: number;
+    max_drawdown_percent: number;
+    win_rate_percent: number;
+    sharpe_ratio: number;
+    initial_balance: number;
+    final_balance: number;
+    total_trades: number;
+  };
+  trades: Array<{
+    entry_time: string;
+    exit_time: string;
+    entry_price: number;
+    exit_price: number;
+    pnl_percent: number;
+  }>;
+  equity_curve?: Array<{
+    time: string;
+    value: number;
+  }>;
 }
 
 // ---- Smart Money Concepts ----
@@ -158,26 +193,6 @@ export interface ActionableData {
   macroRisk: string;
 }
 
-// ---- Actuarial Risk Models ----
-
-export interface ActuarialData {
-  riskMetrics: {
-    var95: number;        // Value at Risk 95% (daily loss %)
-    cvar95: number;       // Conditional VaR / Expected Shortfall
-    annualVolatility: number;  // Annualized volatility %
-  };
-  monteCarlo7D: {
-    p10: number;          // 10th percentile price (bear scenario)
-    p50: number;          // 50th percentile price (base case)
-    p90: number;          // 90th percentile price (bull scenario)
-  };
-  markovRegime: {
-    bull: number;         // Probability 0-1
-    bear: number;
-    sideways: number;
-  };
-  dataAvailable: boolean;
-}
 
 export interface MarketAnalysis {
   symbol: string;

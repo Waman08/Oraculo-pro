@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { generateFullAnalysis, calculateFullScore } from '@/lib/ml-engine';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
-import { fetchBinancePrice, fetchFearGreedIndex, fetchPythonAnalysis, BINANCE_PAIR_MAP, getSupportedSymbols, fetchTop100, searchDexScreener, DexScreenerPair } from '@/lib/api';
+import { fetchBinancePrice, fetchFearGreedIndex, fetchPythonAnalysis, fetchBacktestFromServer, BINANCE_PAIR_MAP, getSupportedSymbols, fetchTop100, searchDexScreener, DexScreenerPair } from '@/lib/api';
+import type { BacktestResult } from '@/types';
 import type { MarketAnalysis, ScoreBreakdown, SentimentData } from '@/types';
 import { useAppSettings, useLocale } from './AppContext';
 import ScoreGauge from './ScoreGauge';
@@ -21,6 +22,7 @@ import ActuarialPanel from './ActuarialPanel';
 import dynamic from 'next/dynamic';
 const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 import BacktestBadge from './BacktestBadge';
+import { BacktestChart } from './charts/BacktestChart';
 import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2 } from 'lucide-react';
 import { wsManager } from '@/lib/websocket-manager';
 import { useAppStore } from '@/lib/store';
@@ -37,6 +39,7 @@ export default function Dashboard() {
   const [engineSource, setEngineSource] = useState<'python' | 'js'>('js');
   const [dexSuggestions, setDexSuggestions] = useState<DexScreenerPair[]>([]);
   const [selectedDexPair, setSelectedDexPair] = useState<DexScreenerPair | null>(null);
+  const [backtestData, setBacktestData] = useState<BacktestResult | null>(null);
 
   const breakdown = useMemo(() => {
     if (!data) return null;
@@ -123,6 +126,17 @@ export default function Dashboard() {
     const interval = setInterval(loadAnalysis, 30000);
     return () => clearInterval(interval);
   }, [loadAnalysis]);
+
+  // Fetch server-side backtest when symbol changes
+  useEffect(() => {
+    let cancelled = false;
+    fetchBacktestFromServer(symbol, timeframe, 100).then(result => {
+      if (!cancelled && result && !result.error) {
+        setBacktestData(result as BacktestResult);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [symbol, timeframe]);
 
   // WebSocket Subscription
   useEffect(() => {
@@ -403,6 +417,11 @@ export default function Dashboard() {
       </div>
 
       <BacktestBadge />
+
+      {/* Server-Side Backtest: Equity Curve Chart */}
+      {backtestData && backtestData.equity_curve && backtestData.equity_curve.length > 0 && (
+        <BacktestChart data={backtestData} />
+      )}
 
       {/* Macro Risk Alert */}
       <div

@@ -45,25 +45,62 @@ class ActuarialEngine:
             "cvar_pct": round(cvar_pct, 2)
         }
 
-    def simulate_gbm_monte_carlo(self, days: int = 7, simulations: int = 1000) -> Dict[str, Any]:
+    def simulate_merton_jump_diffusion_monte_carlo(self, days: int = 7, simulations: int = 1000) -> Dict[str, Any]:
         """
-        Simulación de Monte Carlo mediante Movimiento Browniano Geométrico (GBM).
+        Simulación de Monte Carlo mediante Merton Jump-Diffusion Model.
         :param days: Horizonte de proyección en días (ej: 7).
         :param simulations: Número de trayectorias a simular.
-        :return: Precios proyectados (percentiles 10, 50, 90).
+        :return: Precios proyectados y trayectorias generadas.
         """
         if len(self.returns) < 30:
-            return {"p10": self.current_price, "p50": self.current_price, "p90": self.current_price}
+            return {
+                "p10": self.current_price, "p50": self.current_price, "p90": self.current_price,
+                "paths": []
+            }
 
-        mu = self.returns.mean()
-        sigma = self.returns.std()
+        # 1. Calibración Empírica a 3-sigma
+        std_all = self.returns.std()
+        mean_all = self.returns.mean()
         
-        # Simulamos los retornos diarios para 'days' días y 'simulations' escenarios
-        # dS/S = (mu + 0.5 * sigma^2) dt + sigma * dW
+        # Aislar "saltos" (jumps) como eventos de más de 3 desviaciones estándar
+        threshold = 3 * std_all
+        is_jump = np.abs(self.returns - mean_all) > threshold
+        jumps = self.returns[is_jump]
+        normal_returns = self.returns[~is_jump]
+
+        # Parámetros Base (Difusión)
+        mu = normal_returns.mean() if len(normal_returns) > 0 else mean_all
+        sigma = normal_returns.std() if len(normal_returns) > 0 else std_all
+        
+        # Parámetros de Salto (Poisson / Normal)
+        lambda_j = len(jumps) / len(self.returns) # Probabilidad diaria de salto
+        if len(jumps) > 0:
+            mu_j = jumps.mean()
+            sigma_j = jumps.std()
+        else:
+            mu_j = 0.0
+            sigma_j = 0.001
+            
+        # Si la desviación estándar de saltos es NaN, la ajustamos
+        if pd.isna(sigma_j) or sigma_j == 0:
+            sigma_j = std_all
+            
+        # 2. Simulación de Monte Carlo
         drift = mu - (0.5 * sigma**2)
         
+        # Matriz de variables normales estándar para la difusión
         Z = np.random.standard_normal((days, simulations))
-        daily_returns = np.exp(drift + sigma * Z)
+        
+        # Matriz de número de saltos diarios (Poisson)
+        N = np.random.poisson(lambda_j, (days, simulations))
+        
+        # Magnitud de los saltos (Normal)
+        # Se genera un salto aleatorio para cada evento de salto
+        # Forma vectorizada eficiente:
+        J = np.random.normal(mu_j, sigma_j, (days, simulations)) * N
+        
+        # Retornos diarios simulados (Difusión + Saltos)
+        daily_returns = np.exp(drift + sigma * Z + J)
         
         # Generar trayectorias de precios
         price_paths = np.zeros_like(daily_returns)
@@ -73,11 +110,32 @@ class ActuarialEngine:
             
         final_prices = price_paths[-1]
         
+        # Generar "Cono" visual (promedio de trayectorias) para el frontend
+        # Para no mandar las 1000 trayectorias, mandaremos 3 representativas (P10, P50, P90)
+        p10_path = np.percentile(price_paths, 10, axis=1).tolist()
+        p50_path = np.percentile(price_paths, 50, axis=1).tolist()
+        p90_path = np.percentile(price_paths, 90, axis=1).tolist()
+        
+        # Convertir a valores absolutos basados en current_price en día 0
+        p10_path = [self.current_price] + [round(p, 2) for p in p10_path]
+        p50_path = [self.current_price] + [round(p, 2) for p in p50_path]
+        p90_path = [self.current_price] + [round(p, 2) for p in p90_path]
+        
         return {
             "p10": round(np.percentile(final_prices, 10), 2),
             "p50": round(np.percentile(final_prices, 50), 2),
             "p90": round(np.percentile(final_prices, 90), 2),
-            "sigma_annualized": round(sigma * np.sqrt(365) * 100, 2)
+            "sigma_annualized": round(sigma * np.sqrt(365) * 100, 2),
+            "paths": {
+                "p10": p10_path,
+                "p50": p50_path,
+                "p90": p90_path
+            },
+            "jump_params": {
+                "lambda": round(lambda_j, 4),
+                "mu_j": round(mu_j, 4),
+                "sigma_j": round(sigma_j, 4)
+            }
         }
 
     def get_markov_regime_probabilities(self) -> Dict[str, float]:
@@ -126,7 +184,7 @@ class ActuarialEngine:
         """Agrega todos los modelos en un reporte estructurado."""
         try:
             var_data = self.calculate_var_cvar(0.95)
-            mc_data = self.simulate_gbm_monte_carlo(days=7, simulations=1000)
+            mc_data = self.simulate_merton_jump_diffusion_monte_carlo(days=7, simulations=1000)
             markov_data = self.get_markov_regime_probabilities()
             
             return {
@@ -138,7 +196,9 @@ class ActuarialEngine:
                 "monteCarlo7D": {
                     "p10": mc_data["p10"], # Bear case
                     "p50": mc_data["p50"], # Base case
-                    "p90": mc_data["p90"]  # Bull case
+                    "p90": mc_data["p90"],  # Bull case
+                    "paths": mc_data.get("paths", {}),
+                    "jump_params": mc_data.get("jump_params", {})
                 },
                 "markovRegime": markov_data,
                 "dataAvailable": True
