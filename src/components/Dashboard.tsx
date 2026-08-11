@@ -130,6 +130,7 @@ export default function Dashboard() {
   // Fetch server-side backtest when symbol changes
   useEffect(() => {
     let cancelled = false;
+    setBacktestData(null);
     fetchBacktestFromServer(symbol, timeframe, 100).then(result => {
       if (!cancelled && result && !result.error) {
         setBacktestData(result as BacktestResult);

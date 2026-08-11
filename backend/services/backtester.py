@@ -18,10 +18,6 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
         
     df = df.copy()
     
-    # Limitar a los últimos 100 periodos para mayor velocidad
-    if len(df) > 100:
-        df = df.iloc[-100:].copy()
-
     # Calcular Indicadores (Aproximación Vectorizada del Quant Score)
     df['rsi'] = ta.rsi(df['close'], length=14)
     df['ema_short'] = ta.ema(df['close'], length=9)
@@ -36,6 +32,12 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
         df['macd_signal'] = 0
 
     # Llenar nulos
+    df = df.fillna(0)
+
+    # Limitar a los últimos 100 periodos para mayor velocidad Y DESPUÉS de calcular indicadores
+    if len(df) > 100:
+        df = df.iloc[-100:].copy()
+
     df = df.fillna(0)
 
     # Generar Señales (Score Proxy > 60 = Compra, < 40 = Venta)
