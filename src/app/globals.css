@@ -1,0 +1,366 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   DESIGN SYSTEM — Oráculo Definitivo de Trading
+   ============================================================ */
+
+:root {
+  /* Dark Theme (default) — Ultra Premium Institutional Midnight */
+  --bg-primary: #05070C;
+  --bg-secondary: #0C0F17;
+  --bg-tertiary: #121824;
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(245, 176, 65, 0.25);
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #64748B;
+  --accent-gold: #F5B041;
+  --accent-gold-dim: rgba(245, 176, 65, 0.15);
+  --signal-buy: #10B981;
+  --signal-buy-dim: rgba(16, 185, 129, 0.15);
+  --signal-sell: #EF4444;
+  --signal-sell-dim: rgba(239, 68, 68, 0.15);
+  --signal-neutral: #94A3B8;
+  --signal-warning: #FB923C;
+  --glass-bg: rgba(12, 15, 23, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --shadow-glow: rgba(245, 176, 65, 0.06);
+  --gradient-start: #05070C;
+  --gradient-end: #0C0F17;
+}
+
+[data-theme="light"] {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F1F5F9;
+  --border-color: #E2E8F0;
+  --border-hover: #CBD5E1;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --accent-gold: #D97706;
+  --accent-gold-dim: rgba(217, 119, 6, 0.1);
+  --signal-buy: #059669;
+  --signal-buy-dim: rgba(5, 150, 105, 0.1);
+  --signal-sell: #DC2626;
+  --signal-sell-dim: rgba(220, 38, 38, 0.1);
+  --signal-neutral: #64748B;
+  --signal-warning: #EA580C;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(226, 232, 240, 0.8);
+  --shadow-glow: rgba(217, 119, 6, 0.06);
+  --gradient-start: #F8FAFC;
+  --gradient-end: #FFFFFF;
+}
+
+/* ---- Base Styles ---- */
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ---- Scrollbar ---- */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-hover);
+}
+
+/* ---- Glass Cards ---- */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  box-shadow: 0 4px 24px var(--shadow-glow);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 8px 32px var(--shadow-glow);
+}
+
+/* ---- Gauge Animations ---- */
+
+@keyframes gaugeNeedle {
+  from { transform: rotate(-90deg); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* ---- Utility Classes ---- */
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.4s ease-out forwards;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.3s ease-out forwards;
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.animate-breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, transparent 25%, var(--accent-gold-dim) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ---- Signal Badge ---- */
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.signal-badge--compra-fuerte {
+  background: var(--signal-buy-dim);
+  color: var(--signal-buy);
+  border: 1px solid var(--signal-buy);
+}
+
+.signal-badge--compra {
+  background: var(--signal-buy-dim);
+  color: var(--signal-buy);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.signal-badge--mantener {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--signal-neutral);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.signal-badge--venta {
+  background: var(--signal-sell-dim);
+  color: var(--signal-warning);
+  border: 1px solid rgba(251, 146, 60, 0.4);
+}
+
+.signal-badge--venta-fuerte {
+  background: var(--signal-sell-dim);
+  color: var(--signal-sell);
+  border: 1px solid var(--signal-sell);
+}
+
+/* ---- Indicator Cards ---- */
+
+.indicator-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  transition: all 0.25s ease;
+}
+
+.indicator-card:hover {
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px var(--shadow-glow);
+}
+
+.indicator-card--bullish {
+  border-left: 3px solid var(--signal-buy);
+}
+
+.indicator-card--bearish {
+  border-left: 3px solid var(--signal-sell);
+}
+
+.indicator-card--neutral {
+  border-left: 3px solid var(--signal-neutral);
+}
+
+/* ---- Progress Bars ---- */
+
+.progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  overflow: hidden;
+}
+
+.progress-bar__fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.8s ease-out;
+}
+
+/* ---- Sparkline ---- */
+
+.sparkline-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
+  height: 24px;
+}
+
+.sparkline-bar {
+  flex: 1;
+  border-radius: 1px;
+  min-width: 3px;
+  transition: height 0.3s ease;
+}
+
+/* ---- Tab Buttons ---- */
+
+.tab-button {
+  padding: 8px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.tab-button:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.tab-button--active {
+  background: var(--accent-gold-dim);
+  color: var(--accent-gold);
+  border-color: var(--accent-gold);
+}
+
+/* ---- Stagger Children Animation ---- */
+
+.stagger-children > * {
+  opacity: 0;
+  animation: fadeInUp 0.4s ease-out forwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.05s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.15s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.25s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(7) { animation-delay: 0.35s; }
+.stagger-children > *:nth-child(8) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(9) { animation-delay: 0.45s; }
+.stagger-children > *:nth-child(10) { animation-delay: 0.5s; }
+
+/* ---- Theme Toggle ---- */
+
+.theme-toggle {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 13px;
+  background: var(--border-color);
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  padding: 0;
+}
+
+.theme-toggle__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+[data-theme="light"] .theme-toggle__knob {
+  transform: translateX(22px);
+}
+
+/* ---- Responsive ---- */
+
+@media (max-width: 768px) {
+  .glass-card {
+    border-radius: 12px;
+  }
+}

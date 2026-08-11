@@ -1,0 +1,394 @@
+[
+  {
+    "timestamp": "2026-05-26T02:19:59.993424+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 37.8,
+    "price": 76775.04
+  },
+  {
+    "timestamp": "2026-05-26T04:18:27.720608+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 2088.99
+  },
+  {
+    "timestamp": "2026-05-26T06:22:27.084776+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 2099.06
+  },
+  {
+    "timestamp": "2026-05-26T08:00:34.839985+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.8,
+    "price": 2095.88
+  },
+  {
+    "timestamp": "2026-05-26T08:15:59.576061+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 2097.55
+  },
+  {
+    "timestamp": "2026-05-26T08:41:36.642046+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.7,
+    "price": 2098.8
+  },
+  {
+    "timestamp": "2026-05-26T08:57:20.536979+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 2098.34
+  },
+  {
+    "timestamp": "2026-05-26T10:40:40.737135+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.7,
+    "price": 2133.44
+  },
+  {
+    "timestamp": "2026-05-26T10:50:57.767331+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.6,
+    "price": 2131.82
+  },
+  {
+    "timestamp": "2026-05-26T11:11:39.657709+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 38.2,
+    "price": 77366.01
+  },
+  {
+    "timestamp": "2026-05-26T11:47:47.202352+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 38.2,
+    "price": 77257.57
+  },
+  {
+    "timestamp": "2026-05-26T12:08:35.275826+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 37.4,
+    "price": 2115.61
+  },
+  {
+    "timestamp": "2026-05-26T14:12:32.184359+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 38.5,
+    "price": 77324.0
+  },
+  {
+    "timestamp": "2026-05-26T14:33:09.104399+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 32.6,
+    "price": 85.85
+  },
+  {
+    "timestamp": "2026-05-26T14:58:46.975799+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 36.5,
+    "price": 2112.45
+  },
+  {
+    "timestamp": "2026-05-26T15:09:19.791517+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 39.0,
+    "price": 76881.32
+  },
+  {
+    "timestamp": "2026-05-26T15:55:48.513416+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.1,
+    "price": 2081.34
+  },
+  {
+    "timestamp": "2026-05-26T16:21:41.307639+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.9,
+    "price": 2083.25
+  },
+  {
+    "timestamp": "2026-05-26T16:31:58.514142+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.3,
+    "price": 2076.04
+  },
+  {
+    "timestamp": "2026-05-26T16:52:51.659095+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.3,
+    "price": 2076.63
+  },
+  {
+    "timestamp": "2026-05-26T17:08:17.997757+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.4,
+    "price": 2078.26
+  },
+  {
+    "timestamp": "2026-05-26T17:18:33.695056+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.2,
+    "price": 2075.52
+  },
+  {
+    "timestamp": "2026-05-26T17:33:53.634033+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 39.8,
+    "price": 75883.18
+  },
+  {
+    "timestamp": "2026-05-26T17:59:34.552961+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 75954.01
+  },
+  {
+    "timestamp": "2026-05-26T18:25:33.937006+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 36.5,
+    "price": 76254.0
+  },
+  {
+    "timestamp": "2026-05-26T18:46:22.837692+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 39.8,
+    "price": 75930.51
+  },
+  {
+    "timestamp": "2026-05-26T19:48:24.520423+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 40.0,
+    "price": 76013.58
+  },
+  {
+    "timestamp": "2026-05-26T20:03:50.097667+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 39.4,
+    "price": 76054.03
+  },
+  {
+    "timestamp": "2026-05-28T17:05:20.539608+00:00",
+    "symbol": "BTC",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.5,
+    "price": 73359.63
+  },
+  {
+    "timestamp": "2026-05-28T17:05:25.902250+00:00",
+    "symbol": "ETH",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.6,
+    "price": 2010.4
+  },
+  {
+    "timestamp": "2026-05-28T17:41:38.058011+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 25.6,
+    "price": 2019.95
+  },
+  {
+    "timestamp": "2026-05-28T17:46:44.583580+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 20.1,
+    "price": 73623.4
+  },
+  {
+    "timestamp": "2026-05-28T17:57:02.374014+00:00",
+    "symbol": "BTC",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.7,
+    "price": 73504.01
+  },
+  {
+    "timestamp": "2026-05-28T17:57:06.114149+00:00",
+    "symbol": "ETH",
+    "signal": "Compra Fuerte",
+    "quantScore": 20.0,
+    "price": 2018.79
+  },
+  {
+    "timestamp": "2026-05-28T18:02:15.018056+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 25.7,
+    "price": 2021.51
+  },
+  {
+    "timestamp": "2026-05-28T18:07:21.133637+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 20.1,
+    "price": 73632.84
+  },
+  {
+    "timestamp": "2026-05-28T19:03:55.395205+00:00",
+    "symbol": "BTC",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.8,
+    "price": 73569.49
+  },
+  {
+    "timestamp": "2026-05-31T20:01:04.262759+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 28.6,
+    "price": 73615.05
+  },
+  {
+    "timestamp": "2026-06-05T15:33:10.291854+00:00",
+    "symbol": "ETH",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.8,
+    "price": 1588.71
+  },
+  {
+    "timestamp": "2026-06-05T16:15:43.941266+00:00",
+    "symbol": "BTC",
+    "signal": "Compra Fuerte",
+    "quantScore": 14.9,
+    "price": 60874.01
+  },
+  {
+    "timestamp": "2026-06-05T18:19:39.102373+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 20.6,
+    "price": 60484.0
+  },
+  {
+    "timestamp": "2026-06-05T18:50:36.828772+00:00",
+    "symbol": "BTC",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.9,
+    "price": 59751.0
+  },
+  {
+    "timestamp": "2026-06-05T18:50:42.839266+00:00",
+    "symbol": "SOL",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.9,
+    "price": 63.57
+  },
+  {
+    "timestamp": "2026-06-05T19:00:58.268442+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 25.4,
+    "price": 62.69
+  },
+  {
+    "timestamp": "2026-06-05T19:06:06.575493+00:00",
+    "symbol": "SOL",
+    "signal": "Compra Fuerte",
+    "quantScore": 19.7,
+    "price": 62.4
+  },
+  {
+    "timestamp": "2026-06-14T03:21:07.234697+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 37.5,
+    "price": 64520.13
+  },
+  {
+    "timestamp": "2026-06-14T03:21:12.815033+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 39.6,
+    "price": 1682.69
+  },
+  {
+    "timestamp": "2026-06-14T03:21:17.226311+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 32.6,
+    "price": 68.92
+  },
+  {
+    "timestamp": "2026-06-21T00:02:48.687403+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 36.4,
+    "price": 64254.5
+  },
+  {
+    "timestamp": "2026-08-04T21:17:42.618312+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 37.8,
+    "price": 74.07
+  },
+  {
+    "timestamp": "2026-08-09T04:22:15.451878+00:00",
+    "symbol": "ETH",
+    "signal": "Venta",
+    "quantScore": 60.9,
+    "price": 1914.55
+  },
+  {
+    "timestamp": "2026-08-09T19:18:54.073448+00:00",
+    "symbol": "BTC",
+    "signal": "Venta",
+    "quantScore": 62.0,
+    "price": 65198.88
+  },
+  {
+    "timestamp": "2026-08-10T20:14:16.205298+00:00",
+    "symbol": "BTC",
+    "signal": "Compra",
+    "quantScore": 36.8,
+    "price": 64085.83
+  },
+  {
+    "timestamp": "2026-08-10T20:14:25.305307+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 36.3,
+    "price": 76.28
+  },
+  {
+    "timestamp": "2026-08-11T15:21:04.681138+00:00",
+    "symbol": "ETH",
+    "signal": "Compra",
+    "quantScore": 37.7,
+    "price": 1873.54
+  },
+  {
+    "timestamp": "2026-08-11T15:21:09.055123+00:00",
+    "symbol": "SOL",
+    "signal": "Compra",
+    "quantScore": 39.1,
+    "price": 75.17
+  }
+]
