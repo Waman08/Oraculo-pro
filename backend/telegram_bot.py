@@ -188,6 +188,10 @@ async def handle_command(sender: TelegramSender, text: str, chat_id: str):
         "/patron": cmd_patterns,
         "/modo": cmd_set_mode,
         "/estado": cmd_bot_status,
+        "/riesgo": cmd_risk,
+        "/r": cmd_risk,
+        "/backtest": cmd_backtest,
+        "/bt": cmd_backtest,
     }
 
     handler = handlers.get(cmd)
@@ -239,6 +243,10 @@ async def cmd_help(sender: TelegramSender, args: List[str]):
         "  /top <code>compra</code> — Top señales de compra/venta\n"
         "  /resumen — Resumen general del mercado\n"
         "\n"
+        "🧮 <b>Modelos Cuantitativos</b>\n"
+        "  /riesgo <code>BTC</code> — Análisis actuarial (VaR, Monte Carlo, Markov)\n"
+        "  /backtest <code>ETH</code> — Backtest con Quant Score (90 días)\n"
+        "\n"
         "🔔 <b>Alertas de Precio</b>\n"
         "  /alerta <code>BTC above 80000</code> — Crear alerta\n"
         "  /alerta <code>ETH below 2500</code> — Crear alerta\n"
@@ -254,9 +262,10 @@ async def cmd_help(sender: TelegramSender, args: List[str]):
         "  /modo <code>seguro</code> — Cambiar modo de riesgo\n"
         "  /estado — Estado del bot\n"
         "\n"
-        "💡 <i>Atajos: /a = /analizar, /p = /precio, /w = /watchlist</i>"
+        "💡 <i>Atajos: /a = /analizar, /p = /precio, /w = /watchlist, /r = /riesgo, /bt = /backtest</i>"
     )
     await sender.send_message(msg, parse_mode="HTML")
+
 
 
 async def cmd_analyze(sender: TelegramSender, args: List[str]):
@@ -1039,6 +1048,209 @@ async def cmd_bot_status(sender: TelegramSender, args: List[str]):
     await sender.send_message("\n".join(lines), parse_mode="HTML")
 
 
+async def cmd_risk(sender: TelegramSender, args: List[str]):
+    """Actuarial risk analysis: /riesgo BTC"""
+    if not args:
+        await sender.send_message(
+            "🧮 Uso: /riesgo <code>BTC</code>\nEjemplo: <code>/riesgo SOL</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    symbol = args[0].upper()
+    if not is_supported(symbol):
+        await sender.send_message(
+            f"❌ <code>{_escape_html(symbol)}</code> no disponible.",
+            parse_mode="HTML",
+        )
+        return
+
+    await sender.send_message(
+        f"⏳ Calculando riesgo actuarial para <b>{_escape_html(symbol)}</b>...",
+        parse_mode="HTML",
+    )
+
+    from services.binance_client import fetch_klines
+    from services.actuarial_models import ActuarialEngine
+
+    df = await fetch_klines(symbol, timeframe="1D", limit=365)
+    if df is None or df.empty or len(df) < 30:
+        await sender.send_message(
+            f"❌ Datos insuficientes para análisis actuarial de <code>{_escape_html(symbol)}</code>.",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        engine = ActuarialEngine(df)
+        report = engine.generate_full_actuarial_report()
+    except Exception as e:
+        await sender.send_message(
+            f"❌ Error en modelo actuarial: <code>{_escape_html(str(e))}</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    if not report.get("dataAvailable"):
+        await sender.send_message(
+            f"❌ No se pudo generar el reporte actuarial para {_escape_html(symbol)}.",
+            parse_mode="HTML",
+        )
+        return
+
+    risk = report["riskMetrics"]
+    mc = report["monteCarlo7D"]
+    markov = report["markovRegime"]
+    jp = mc.get("jump_params", {})
+    current_price = float(df['close'].iloc[-1])
+
+    # VaR color indicator
+    var_abs = abs(risk["var95"])
+    var_emoji = "🟢" if var_abs < 3 else "🟡" if var_abs < 5 else "🔴"
+
+    # Dominant regime
+    regimes = {"bull": ("🟢 Alcista", markov.get("bull", 0)), "bear": ("🔴 Bajista", markov.get("bear", 0)), "sideways": ("⚪ Lateral", markov.get("sideways", 0))}
+    dominant = max(regimes.items(), key=lambda x: x[1][1])
+    dom_label, dom_pct = dominant[1]
+    dom_pct_val = dom_pct * 100 if dom_pct <= 1 else dom_pct
+
+    lines = [
+        f"🧮 <b>ANÁLISIS ACTUARIAL — {_escape_html(symbol)}</b>",
+        f"<i>Modelo: Merton Jump-Diffusion</i>",
+        "",
+        f"💰 Precio actual: <code>${current_price:,.2f}</code>",
+        "",
+        f"📊 <b>Métricas de Riesgo</b>",
+        f"  {var_emoji} VaR 95% (diario): <code>{risk['var95']:.2f}%</code>",
+        f"  📉 CVaR / Expected Shortfall: <code>{risk['cvar95']:.2f}%</code>",
+        f"  📈 Volatilidad Anualizada: <code>{risk['annualVolatility']:.2f}%</code>",
+        "",
+        f"🔮 <b>Monte Carlo 7 Días</b>",
+        f"  🔴 P10 (Bear): <code>${mc['p10']:,.2f}</code>",
+        f"  🟡 P50 (Base): <code>${mc['p50']:,.2f}</code>",
+        f"  🟢 P90 (Bull): <code>${mc['p90']:,.2f}</code>",
+    ]
+
+    # Jump parameters
+    if jp and jp.get("lambda", 0) > 0:
+        lines.extend([
+            "",
+            f"⚡ <b>Parámetros de Salto</b>",
+            f"  λ (intensidad): <code>{jp['lambda']:.4f}</code> ({jp['lambda']*365:.1f}/año)",
+            f"  μ_J (media salto): <code>{jp['mu_j']:.4f}</code>",
+            f"  σ_J (vol salto): <code>{jp['sigma_j']:.4f}</code>",
+        ])
+    else:
+        lines.append("\n✅ No se detectaron eventos extremos (saltos) en el histórico.")
+
+    lines.extend([
+        "",
+        f"🔄 <b>Régimen de Markov</b>",
+        f"  Dominante: {dom_label} ({dom_pct_val:.1f}%)",
+        f"  🟢 Alcista: <code>{(markov.get('bull', 0) * 100 if markov.get('bull', 0) <= 1 else markov.get('bull', 0)):.1f}%</code>",
+        f"  🔴 Bajista: <code>{(markov.get('bear', 0) * 100 if markov.get('bear', 0) <= 1 else markov.get('bear', 0)):.1f}%</code>",
+        f"  ⚪ Lateral: <code>{(markov.get('sideways', 0) * 100 if markov.get('sideways', 0) <= 1 else markov.get('sideways', 0)):.1f}%</code>",
+        "",
+        "⚡ <i>Oráculo de Trading Pro</i>",
+        f"<i>{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</i>",
+    ])
+
+    await sender.send_message("\n".join(lines), parse_mode="HTML")
+
+
+async def cmd_backtest(sender: TelegramSender, args: List[str]):
+    """Run backtest: /backtest BTC"""
+    if not args:
+        await sender.send_message(
+            "📊 Uso: /backtest <code>BTC</code>\nEjemplo: <code>/backtest SOL</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    symbol = args[0].upper()
+    if not is_supported(symbol):
+        await sender.send_message(
+            f"❌ <code>{_escape_html(symbol)}</code> no disponible.",
+            parse_mode="HTML",
+        )
+        return
+
+    await sender.send_message(
+        f"⏳ Ejecutando backtest de <b>{_escape_html(symbol)}</b> (90 días)...",
+        parse_mode="HTML",
+    )
+
+    from services.binance_client import fetch_klines
+    from services.backtester import run_backtest
+
+    df = await fetch_klines(symbol, timeframe="1D", limit=500)
+    if df is None or df.empty or len(df) < 50:
+        await sender.send_message(
+            f"❌ Datos insuficientes para backtest de <code>{_escape_html(symbol)}</code>.",
+            parse_mode="HTML",
+        )
+        return
+
+    try:
+        results = run_backtest(df)
+    except Exception as e:
+        await sender.send_message(
+            f"❌ Error en backtest: <code>{_escape_html(str(e))}</code>",
+            parse_mode="HTML",
+        )
+        return
+
+    if "error" in results:
+        await sender.send_message(
+            f"❌ {_escape_html(results['error'])}",
+            parse_mode="HTML",
+        )
+        return
+
+    m = results["metrics"]
+    trades = results.get("trades", [])
+
+    # Color indicators
+    ret_emoji = "🟢" if m["total_return_percent"] >= 0 else "🔴"
+    wr_emoji = "🟢" if m["win_rate_percent"] >= 50 else "🟡" if m["win_rate_percent"] >= 40 else "🔴"
+    sharpe_emoji = "🟢" if m["sharpe_ratio"] >= 1 else "🟡" if m["sharpe_ratio"] >= 0 else "🔴"
+    dd_emoji = "🟢" if abs(m["max_drawdown_percent"]) < 10 else "🟡" if abs(m["max_drawdown_percent"]) < 20 else "🔴"
+
+    lines = [
+        f"📊 <b>BACKTEST — {_escape_html(symbol)}</b>",
+        f"<i>Motor: Quant Score Proxy (RSI 40% + MACD 30% + EMA 30%)</i>",
+        "",
+        f"💰 <b>Rendimiento</b>",
+        f"  {ret_emoji} Retorno Total: <code>{m['total_return_percent']:+.2f}%</code>",
+        f"  💵 Balance: <code>${m['initial_balance']:,.0f}</code> → <code>${m['final_balance']:,.2f}</code>",
+        "",
+        f"📈 <b>Métricas</b>",
+        f"  {wr_emoji} Win Rate: <code>{m['win_rate_percent']:.1f}%</code>",
+        f"  {sharpe_emoji} Sharpe Ratio: <code>{m['sharpe_ratio']:.2f}</code>",
+        f"  {dd_emoji} Max Drawdown: <code>{m['max_drawdown_percent']:.2f}%</code>",
+        f"  🔄 Total Trades: <code>{m['total_trades']}</code>",
+    ]
+
+    # Last 3 trades
+    if trades:
+        lines.append("")
+        lines.append("📋 <b>Últimas Operaciones</b>")
+        for t in trades[-3:]:
+            pnl = t.get("pnl_percent", 0)
+            pnl_emoji = "🟢" if pnl >= 0 else "🔴"
+            lines.append(
+                f"  {pnl_emoji} <code>${t['entry_price']:,.2f}</code> → <code>${t['exit_price']:,.2f}</code> ({pnl:+.2f}%)"
+            )
+
+    lines.extend([
+        "",
+        "⚡ <i>Oráculo de Trading Pro</i>",
+        f"<i>{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</i>",
+    ])
+
+    await sender.send_message("\n".join(lines), parse_mode="HTML")
+
+
 # ============================================================
 # TELEGRAM POLLING (receive commands)
 # ============================================================
@@ -1230,6 +1442,67 @@ async def check_signal_alerts(sender: TelegramSender, config: dict):
         save_sent_signals(sent_signals)
 
 
+# ============================================================
+# ACTUARIAL ALERTS
+# ============================================================
+
+async def check_actuarial_risk(sender: TelegramSender, config: dict):
+    from services.binance_client import fetch_klines
+    from services.actuarial_models import ActuarialEngine
+    
+    # Check top 3 from watchlist to avoid API spam
+    top_coins = config["WATCHLIST"][:3]
+    has_alerted = False
+
+    for symbol in top_coins:
+        if not is_supported(symbol):
+            continue
+        try:
+            df = await fetch_klines(symbol, "1D", 365)
+            if df is None or df.empty or len(df) < 100:
+                continue
+            engine = ActuarialEngine(df)
+            report = engine.generate_full_actuarial_report()
+            if not report.get("dataAvailable"):
+                continue
+                
+            risk = report["riskMetrics"]
+            mc = report["monteCarlo7D"]
+            jp = mc.get("jump_params", {})
+            
+            # Triggers for extreme tail risk
+            var_trigger = risk["var95"] < -7.0
+            jump_trigger = jp.get("lambda", 0) > 0.05
+            
+            if var_trigger or jump_trigger:
+                current_price = float(df['close'].iloc[-1])
+                lines = [
+                    f"⚠️ <b>ALERTA DE RIESGO ACTUARIAL — {_escape_html(symbol)}</b>",
+                    f"",
+                    f"💰 Precio actual: <code>${current_price:,.2f}</code>",
+                    f"El modelo <i>Merton Jump-Diffusion</i> detectó anomalías de riesgo extremo en la cola:",
+                    f""
+                ]
+                if var_trigger:
+                    lines.append(f"🔴 <b>VaR 95% Crítico</b>: <code>{risk['var95']:.2f}%</code> diario")
+                if jump_trigger:
+                    lines.append(f"⚡ <b>Alta prob. de salto (Tail Risk)</b>: λ = <code>{jp['lambda']:.4f}</code>")
+                
+                lines.extend([
+                    "",
+                    f"🛡️ <i>Recomendación: Reduce exposición direccional o ajusta Stop Loss.</i>",
+                    f"<i>Usa /riesgo {_escape_html(symbol)} para análisis completo.</i>"
+                ])
+                await sender.send_message("\n".join(lines), parse_mode="HTML")
+                has_alerted = True
+                
+        except Exception as e:
+            print(f"  [ERR] Error in actuarial check for {symbol}: {e}")
+            
+    if has_alerted:
+        print("[INFO] Actuarial risk alerts sent.")
+
+
 async def send_periodic_summary(sender: TelegramSender, config: dict):
     global last_summary_time
     if (time.time() - last_summary_time) / 3600 < 6:
@@ -1360,6 +1633,25 @@ async def periodic_summary_loop():
             await asyncio.sleep(300)
 
 
+async def actuarial_alerts_loop():
+    print("[INIT] Starting Actuarial Alerts background task...")
+    while True:
+        try:
+            config = get_config()
+            if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
+                await asyncio.sleep(60)
+                continue
+            
+            sender = TelegramSender(config["BOT_TOKEN"], config["CHAT_ID"])
+            await check_actuarial_risk(sender, config)
+            
+            # Run check every 12 hours (43200 seconds)
+            await asyncio.sleep(43200)
+        except Exception as e:
+            print(f"[BOT-ERR] Error in actuarial alerts loop: {e}")
+            await asyncio.sleep(300)
+
+
 async def start_bot_loop():
     global bot_status
     print("[INIT] Bot loop starting (symbols already initialized by main.py)...")
@@ -1377,6 +1669,7 @@ async def start_bot_loop():
         price_alerts_loop(),
         signal_alerts_loop(),
         periodic_summary_loop(),
+        actuarial_alerts_loop(),
     )
 
 
