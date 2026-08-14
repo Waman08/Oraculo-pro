@@ -63,7 +63,17 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
 
     # Calcular retornos y equity curve
     df['log_ret'] = np.log(df['close'] / df['close'].shift(1)).fillna(0)
-    df['strategy_ret'] = df['position'] * df['log_ret']
+    
+    # Restar comisiones (0.1% Taker fee en Binance = 0.001)
+    FEE_RATE = 0.001
+    df['trade_entry'] = (df['position'] == 1) & (df['position'].shift(1) != 1)
+    df['trade_exit'] = (df['position'] != 1) & (df['position'].shift(1) == 1)
+    
+    df['fees'] = 0.0
+    df.loc[df['trade_entry'], 'fees'] = FEE_RATE
+    df.loc[df['trade_exit'], 'fees'] = FEE_RATE
+    
+    df['strategy_ret'] = (df['position'] * df['log_ret']) - df['fees']
     
     df['strategy_ret'] = df['strategy_ret'].astype(float)
     df['equity_curve'] = initial_balance * np.exp(df['strategy_ret'].cumsum())
@@ -97,7 +107,8 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
             exit_time = ts_str
             
             if entry_price > 0:
-                pnl = (exit_price - entry_price) / entry_price
+                # PnL con comisiones deducidas
+                pnl = (exit_price - entry_price) / entry_price - (2 * FEE_RATE)
                 trades.append({
                     "entry_time": entry_time,
                     "exit_time": exit_time,
@@ -110,7 +121,7 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
     if in_position and entry_price > 0:
         exit_price = df.iloc[-1]['close']
         ts_str = df.index[-1] if isinstance(df.index[-1], str) else df.index[-1].strftime('%Y-%m-%d %H:%M:%S')
-        pnl = (exit_price - entry_price) / entry_price
+        pnl = (exit_price - entry_price) / entry_price - (2 * FEE_RATE)
         trades.append({
             "entry_time": entry_time,
             "exit_time": ts_str,

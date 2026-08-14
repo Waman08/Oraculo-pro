@@ -41,6 +41,29 @@ ALERTS_FILE = Path(__file__).parent / "price_alerts.json"
 ENV_FILE = Path(__file__).parent.parent / ".env.local"
 
 
+async def cache_cleanup_loop():
+    """
+    Garbage Collector: Cleans up expired items from _cache periodically
+    to prevent memory leaks over time.
+    """
+    print("[INIT] Starting Cache Garbage Collector...")
+    while True:
+        try:
+            # Clean up every 1 hour
+            await asyncio.sleep(3600)
+            now = time.time()
+            expired_keys = [k for k, v in _cache.items() if (now - v["ts"]) > CACHE_TTL]
+            for k in expired_keys:
+                del _cache[k]
+            if expired_keys:
+                print(f"[GC] Cleared {len(expired_keys)} expired items from cache.")
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[GC] Error in cache cleanup: {e}")
+            await asyncio.sleep(60)
+            
+
 async def screener_updater_loop():
     """
     Background task: Continuously analyzes the top 100 coins one by one.
@@ -98,11 +121,15 @@ async def lifespan(app: FastAPI):
     # Start Screener background loop
     screener_task = asyncio.create_task(screener_updater_loop())
     
+    # Start Garbage Collector
+    gc_task = asyncio.create_task(cache_cleanup_loop())
+    
     yield
     
     print("[BYE] Backend shutting down.")
     bot_task.cancel()
     screener_task.cancel()
+    gc_task.cancel()
 
 
 app = FastAPI(

@@ -38,6 +38,25 @@ class CryptoPredictor:
             features['vol_change'] = df['volume'].pct_change()
             features['vol_ma_ratio'] = df['volume'] / df['volume'].rolling(10).mean()
             
+        # Indicator Features (giving the ML model "vision")
+        import pandas_ta as ta
+        try:
+            features['rsi'] = ta.rsi(df['close'], length=14)
+            macd = ta.macd(df['close'])
+            if macd is not None and not macd.empty:
+                features['macd_hist'] = macd.iloc[:, 1] # Histogram
+            else:
+                features['macd_hist'] = 0.0
+            
+            # EMA Distance (Trend indicator)
+            ema50 = ta.ema(df['close'], length=50)
+            features['ema_dist'] = (df['close'] - ema50) / ema50
+        except Exception:
+            # Fallback if pandas-ta fails for any reason
+            features['rsi'] = 50.0
+            features['macd_hist'] = 0.0
+            features['ema_dist'] = 0.0
+            
         # Lags
         for i in range(1, 4):
             features[f'return_lag_{i}'] = features['returns'].shift(i)
