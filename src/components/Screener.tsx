@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { generateScreenerData } from '@/lib/mock-data';
 import { fetchPythonScreener } from '@/lib/api';
 import type { Timeframe, Signal, ScreenerEntry } from '@/types';
 import { useAppSettings, useLocale } from './AppContext';
@@ -52,13 +51,13 @@ export default function Screener() {
         setIsBackendOnline(true);
         setLastUpdate(new Date());
       } else {
-        // Fallback to mock data
-        setScreenerData(generateScreenerData(timeframe, mode));
-        setIsBackendOnline(false);
+        // No mock data fallback - if backend is building cache, we wait.
+        setScreenerData([]);
+        setIsBackendOnline(true); 
         setLastUpdate(new Date());
       }
     } catch {
-      setScreenerData(generateScreenerData(timeframe, mode));
+      setScreenerData([]);
       setIsBackendOnline(false);
       setLastUpdate(new Date());
     }
@@ -180,11 +179,13 @@ export default function Screener() {
         ))}
       </div>
 
-      {/* Loading State */}
-      {isLoading && screenerData.length === 0 && (
+      {/* Loading & Initializing State */}
+      {((isLoading && screenerData.length === 0) || (!isLoading && isBackendOnline && screenerData.length === 0)) && (
         <div className="glass-card py-12 text-center">
           <RefreshCw size={24} className="mx-auto mb-3 animate-spin" style={{ color: 'var(--accent-gold)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Analizando mercado con IA cuantitativa...</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            {isLoading ? 'Analizando mercado con IA cuantitativa...' : 'El motor cuántico está inicializando el caché. Escaneando los 100 activos principales...'}
+          </p>
         </div>
       )}
 

@@ -31,12 +31,60 @@ import api_public
 _cache: dict = {}
 CACHE_TTL = 15  # seconds
 
+# Global Screener Cache (holds long-running analysis results)
+_screener_cache: dict = {}
+
 START_TIME = time.time()
 
 # Path to price alerts file (shared with telegram_bot.py)
 ALERTS_FILE = Path(__file__).parent / "price_alerts.json"
 ENV_FILE = Path(__file__).parent.parent / ".env.local"
 
+
+async def screener_updater_loop():
+    """
+    Background task: Continuously analyzes the top 100 coins one by one.
+    Stores the quantitative score in _screener_cache.
+    This prevents the frontend from timing out.
+    """
+    print("[INIT] Starting Screener Background Loop...")
+    while True:
+        try:
+            tickers = await fetch_all_tickers()
+            if not tickers:
+                await asyncio.sleep(60)
+                continue
+            
+            # Top 100 by volume
+            sorted_by_volume = sorted(tickers.items(), key=lambda x: x[1]["volume24h"], reverse=True)
+            top_symbols = [sym for sym, _ in sorted_by_volume[:100]]
+            
+            # Analyze each symbol sequentially to respect rate limits
+            for sym in top_symbols:
+                try:
+                    analysis = await run_analysis(sym, "1D", "Balanceado")
+                    if analysis:
+                        _screener_cache[sym] = {
+                            "quantScore": analysis["quantScore"],
+                            "signal": analysis["signal"],
+                            "rsi": round(analysis.get("indicators", {}).get("rsi", 50.0) or 50.0, 1),
+                            "ts": time.time()
+                        }
+                except Exception as e:
+                    print(f"[Screener Loop] Error analyzing {sym}: {e}")
+                
+                # Sleep briefly between coins to avoid API rate limits
+                await asyncio.sleep(1)
+            
+            print(f"[Screener Loop] Completed analysis for {len(top_symbols)} coins. Sleeping 5 mins.")
+            # Wait 5 minutes before restarting the full loop
+            await asyncio.sleep(300)
+            
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[Screener Loop] Fatal error: {e}")
+            await asyncio.sleep(60)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -47,10 +95,14 @@ async def lifespan(app: FastAPI):
     print("[INIT] Starting Telegram Bot background task...")
     bot_task = asyncio.create_task(start_bot_loop())
     
+    # Start Screener background loop
+    screener_task = asyncio.create_task(screener_updater_loop())
+    
     yield
     
     print("[BYE] Backend shutting down.")
     bot_task.cancel()
+    screener_task.cancel()
 
 
 app = FastAPI(
@@ -175,59 +227,46 @@ async def screener(
     limit: int = Query(20, ge=1, le=100),
 ):
     """
-    Screener: analyze the top N symbols and return sorted by score.
-    Limited to `limit` symbols for performance.
+    Screener: return top symbols sorted by quant score.
+    Uses pre-calculated scores from background loop + EXACT real-time prices.
     """
-    # Get all current tickers
+    # 1. Fetch live prices (Fast)
     tickers = await fetch_all_tickers()
     if not tickers:
         raise HTTPException(status_code=502, detail="Failed to fetch tickers from Binance")
 
-    # Pick the top symbols by volume
-    sorted_by_volume = sorted(tickers.items(), key=lambda x: x[1]["volume24h"], reverse=True)
-    symbols_to_analyze = [sym for sym, _ in sorted_by_volume[:limit]]
+    results = []
+    
+    # 2. Match cached analysis with LIVE prices
+    # If the cache is still building, we might have fewer than `limit` coins.
+    for sym, ticker in tickers.items():
+        cached = _screener_cache.get(sym)
+        if cached:
+            results.append({
+                "symbol": sym,
+                "name": get_name(sym),
+                "price": ticker["price"],               # 100% REAL-TIME
+                "priceChange24h": ticker["priceChange24h"], # 100% REAL-TIME
+                "volume24h": ticker["volume24h"],           # 100% REAL-TIME
+                "rsi": cached["rsi"],
+                "quantScore": cached["quantScore"],
+                "signal": cached["signal"],
+                "sparklineData": [],
+            })
+            
+    if not results:
+        # The backend just started and hasn't analyzed any coin yet
+        return []
 
-    # Parallel analysis with concurrency limiter
-    sem = asyncio.Semaphore(10)  # Max 10 concurrent analyses
-    
-    async def safe_analyze(sym: str, rank: int):
-        async with sem:
-            try:
-                analysis = await run_analysis(sym, timeframe, mode)
-                if analysis:
-                    return {
-                        "rank": rank,
-                        "symbol": sym,
-                        "name": get_name(sym),
-                        "price": analysis["currentPrice"],
-                        "priceChange24h": analysis["priceChange24h"],
-                        "rsi": round(analysis.get("indicators", {}).get("rsi", 50.0) or 50.0, 1),
-                        "quantScore": analysis["quantScore"],
-                        "signal": analysis["signal"],
-                        "volume24h": analysis["volume24h"],
-                        "sparklineData": [],
-                    }
-            except Exception as e:
-                print(f"[Screener] Error analyzing {sym}: {e}")
-            return None
-    
-    # Launch all analyses in parallel
-    raw_results = await asyncio.gather(
-        *[safe_analyze(sym, i + 1) for i, sym in enumerate(symbols_to_analyze)],
-        return_exceptions=True
-    )
-    
-    # Filter out None results and exceptions
-    results = [r for r in raw_results if r is not None and not isinstance(r, Exception)]
-    
-    # Sort by score (lowest first = best buy opportunities)
+    # 3. Sort by score (lowest first = best buy opportunities)
     results.sort(key=lambda x: x["quantScore"])
     
-    # Re-rank after sorting
-    for i, r in enumerate(results):
+    # 4. Limit and Re-rank
+    top_results = results[:limit]
+    for i, r in enumerate(top_results):
         r["rank"] = i + 1
 
-    return results
+    return top_results
 
 
 @app.get("/api/symbols")
