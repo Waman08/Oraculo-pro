@@ -713,3 +713,58 @@ async def run_analysis(
         "source": "python",
     }
     return clean_nans(result)
+
+
+# ============================================================
+# FAST SCREENER ANALYSIS (Lightweight — no ML, no Actuarial, no HTTP sentiment)
+# ============================================================
+
+async def run_screener_analysis_fast(
+    symbol: str,
+    mode: str = "Balanceado",
+) -> Optional[Dict]:
+    """
+    Ultra-lightweight analysis for the screener background loop.
+    Only fetches 1D klines + ticker, calculates technical indicators,
+    and returns quantScore + signal. No ML, no Actuarial, no Sentiment HTTP calls.
+    Typically completes in ~0.3s per coin vs ~10s for full run_analysis.
+    """
+    symbol = symbol.upper()
+
+    if not is_supported(symbol):
+        return None
+
+    import asyncio
+    df, ticker = await asyncio.gather(
+        fetch_klines(symbol, "1D", limit=250),
+        fetch_ticker(symbol)
+    )
+
+    if df is None or df.empty or len(df) < 50:
+        return None
+    if not ticker:
+        return None
+
+    price = ticker["price"]
+
+    # Calculate indicators (pure math, no network calls)
+    indicators = calculate_all_indicators(df, price)
+
+    # Score using only momentum + trend (no sentiment/onchain HTTP calls)
+    mom = score_momentum(indicators)
+    trend = score_trend(indicators, price)
+
+    # Simplified score: 55% momentum + 45% trend (no sentiment/onchain)
+    total = mom * 0.55 + trend * 0.45
+    total = round(max(0, min(100, total)), 1)
+
+    signal = get_signal(total, mode)
+    rsi = round(_safe_val(indicators.get("rsi"), 50.0), 1)
+
+    return {
+        "quantScore": total,
+        "signal": signal,
+        "rsi": rsi,
+        "indicators": indicators,
+    }
+

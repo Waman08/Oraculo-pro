@@ -17,7 +17,7 @@ import pandas as pd
 import telegram_bot
 from telegram_bot import start_bot_loop
 
-from services.analyzer import run_analysis
+from services.analyzer import run_analysis, run_screener_analysis_fast
 from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, is_supported, BINANCE_PAIR_MAP, init_binance_symbols, fetch_klines
 from services.indicators import calculate_all_indicators
 from services.backtester import run_backtest
@@ -66,40 +66,65 @@ async def cache_cleanup_loop():
 
 async def screener_updater_loop():
     """
-    Background task: Continuously analyzes the top 100 coins one by one.
+    Background task: Continuously analyzes the top 100 coins using
+    the FAST screener function (no ML/Actuarial/Sentiment HTTP).
+    Uses batch concurrency (5 at a time) for speed.
     Stores the quantitative score in _screener_cache.
-    This prevents the frontend from timing out.
     """
-    print("[INIT] Starting Screener Background Loop...")
+    print("[INIT] Starting Screener Background Loop (FAST mode)...")
+    # Give the server a moment to fully start
+    await asyncio.sleep(5)
+    
     while True:
         try:
             tickers = await fetch_all_tickers()
             if not tickers:
-                await asyncio.sleep(60)
+                print("[Screener Loop] No tickers available, retrying in 30s...")
+                await asyncio.sleep(30)
                 continue
             
             # Top 100 by volume
             sorted_by_volume = sorted(tickers.items(), key=lambda x: x[1]["volume24h"], reverse=True)
             top_symbols = [sym for sym, _ in sorted_by_volume[:100]]
             
-            # Analyze each symbol sequentially to respect rate limits
-            for sym in top_symbols:
-                try:
-                    analysis = await run_analysis(sym, "1D", "Balanceado")
-                    if analysis:
-                        _screener_cache[sym] = {
-                            "quantScore": analysis["quantScore"],
-                            "signal": analysis["signal"],
-                            "rsi": round(analysis.get("indicators", {}).get("rsi", 50.0) or 50.0, 1),
-                            "ts": time.time()
-                        }
-                except Exception as e:
-                    print(f"[Screener Loop] Error analyzing {sym}: {e}")
-                
-                # Sleep briefly between coins to avoid API rate limits
-                await asyncio.sleep(1)
+            analyzed_count = 0
+            error_count = 0
             
-            print(f"[Screener Loop] Completed analysis for {len(top_symbols)} coins. Sleeping 5 mins.")
+            # Process in batches of 5 for speed while respecting rate limits
+            BATCH_SIZE = 5
+            for i in range(0, len(top_symbols), BATCH_SIZE):
+                batch = top_symbols[i:i+BATCH_SIZE]
+                
+                async def analyze_one(sym: str):
+                    try:
+                        analysis = await run_screener_analysis_fast(sym, "Balanceado")
+                        if analysis:
+                            _screener_cache[sym] = {
+                                "quantScore": analysis["quantScore"],
+                                "signal": analysis["signal"],
+                                "rsi": analysis["rsi"],
+                                "ts": time.time()
+                            }
+                            return True
+                    except Exception as e:
+                        print(f"[Screener Loop] Error analyzing {sym}: {e}")
+                    return False
+                
+                results = await asyncio.gather(
+                    *[analyze_one(sym) for sym in batch],
+                    return_exceptions=True
+                )
+                
+                for r in results:
+                    if r is True:
+                        analyzed_count += 1
+                    else:
+                        error_count += 1
+                
+                # Brief pause between batches to respect API rate limits
+                await asyncio.sleep(0.5)
+            
+            print(f"[Screener Loop] Completed: {analyzed_count} OK, {error_count} errors. Cache has {len(_screener_cache)} coins. Sleeping 5 mins.")
             # Wait 5 minutes before restarting the full loop
             await asyncio.sleep(300)
             
@@ -107,6 +132,8 @@ async def screener_updater_loop():
             break
         except Exception as e:
             print(f"[Screener Loop] Fatal error: {e}")
+            import traceback
+            traceback.print_exc()
             await asyncio.sleep(60)
 
 @asynccontextmanager

@@ -28,9 +28,13 @@ export default function Screener() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [isBackendOnline, setIsBackendOnline] = useState(false);
 
+  const [retryCount, setRetryCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
   // Fetch screener data from Python backend
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setErrorMessage(null);
     try {
       const data = await fetchPythonScreener(timeframe, mode, 50);
       if (data && data.length > 0) {
@@ -50,23 +54,42 @@ export default function Screener() {
         setScreenerData(entries);
         setIsBackendOnline(true);
         setLastUpdate(new Date());
+        setRetryCount(0);
       } else {
-        // No mock data fallback - if backend is building cache, we wait.
+        // Backend returned empty — cache is still building
         setScreenerData([]);
-        setIsBackendOnline(true); 
+        setIsBackendOnline(true);
         setLastUpdate(new Date());
       }
-    } catch {
+    } catch (err) {
+      // Network error or timeout — don't crash, show message
       setScreenerData([]);
       setIsBackendOnline(false);
+      setErrorMessage('El backend está arrancando. Reintentando automáticamente...');
       setLastUpdate(new Date());
     }
     setIsLoading(false);
   }, [timeframe, mode]);
 
+  // Initial fetch + auto-retry every 15s when data is empty
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    // If we have data, no need to retry
+    if (screenerData.length > 0) return;
+
+    // Auto-retry every 15 seconds up to 40 times (10 min)
+    if (retryCount >= 40) return;
+
+    const timer = setTimeout(() => {
+      setRetryCount(prev => prev + 1);
+      fetchData();
+    }, 15000);
+
+    return () => clearTimeout(timer);
+  }, [screenerData.length, retryCount, fetchData]);
 
   // Handle column header click: toggle sort
   const handleSort = (col: 'score' | 'rsi' | 'change') => {
@@ -180,12 +203,20 @@ export default function Screener() {
       </div>
 
       {/* Loading & Initializing State */}
-      {((isLoading && screenerData.length === 0) || (!isLoading && isBackendOnline && screenerData.length === 0)) && (
+      {screenerData.length === 0 && (
         <div className="glass-card py-12 text-center">
           <RefreshCw size={24} className="mx-auto mb-3 animate-spin" style={{ color: 'var(--accent-gold)' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-            {isLoading ? 'Analizando mercado con IA cuantitativa...' : 'El motor cuántico está inicializando el caché. Escaneando los 100 activos principales...'}
+          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+            {isLoading ? 'Analizando mercado con IA cuantitativa...' : 'El motor cuántico está inicializando el caché...'}
           </p>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            {errorMessage || 'Escaneando los 100 activos principales. Esto puede tardar ~2 minutos en el primer arranque.'}
+          </p>
+          {retryCount > 0 && (
+            <p className="text-xs mt-2" style={{ color: 'var(--accent-gold)' }}>
+              🔄 Reintento automático {retryCount}/40
+            </p>
+          )}
         </div>
       )}
 
