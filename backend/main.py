@@ -21,7 +21,9 @@ from services.analyzer import run_analysis, run_screener_analysis_fast
 from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, is_supported, BINANCE_PAIR_MAP, init_binance_symbols, fetch_klines
 from services.indicators import calculate_all_indicators
 from services.backtester import run_backtest
-from services.onchain_free import get_onchain_summary
+from services.onchain_engine import get_full_onchain, get_signals_index
+from services.onchain_stablecoins import get_stablecoin_chains, get_stablecoin_overview
+from services.onchain_scoring import score_onchain_v2
 from services.whale_tracker import get_recent_whale_movements
 from services.user_prefs import get_user_prefs, save_user_prefs
 
@@ -272,6 +274,46 @@ async def backtest(
         )
         
     return results
+
+
+# ============================================================
+# ON-CHAIN ENDPOINTS
+# ============================================================
+
+@app.get("/api/onchain/{symbol}")
+async def get_onchain_dashboard_data(symbol: str):
+    """
+    Get all on-chain data for the specified symbol.
+    Provides verified metrics for BTC/ETH and available metrics for altcoins.
+    """
+    symbol = symbol.upper()
+    if not is_supported(symbol):
+        raise HTTPException(status_code=404, detail="Symbol not supported")
+        
+    data = await get_full_onchain(symbol)
+    signals = await get_signals_index(symbol)
+    
+    return {
+        "symbol": symbol,
+        "metrics": data,
+        "signalsIndex": signals.get("signalsIndex", 50),
+        "signalsSignal": signals.get("signal", "Neutral"),
+        "subSignals": signals.get("subSignals", {}),
+        "dataVerified": data.get("dataDepth") in ["full", "partial"]
+    }
+
+@app.get("/api/onchain/stablecoins")
+async def get_stablecoins_data():
+    """Get global stablecoin flows and TVL data."""
+    try:
+        chains = await get_stablecoin_chains()
+        overview = await get_stablecoin_overview()
+        return {
+            "chains": chains,
+            "overview": overview
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/screener")

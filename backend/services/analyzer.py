@@ -16,17 +16,18 @@ from services.ml_predictor import predict_direction
 from services.volume_anomaly import detect_volume_anomaly
 from services.sentiment_nlp import analyze_social_sentiment
 from services.actuarial_models import ActuarialEngine
-from services.onchain_free import get_onchain_summary
+from services.onchain_engine import get_full_onchain, get_onchain_summary
+from services.onchain_scoring import score_onchain_v2
 
 
 # ---- Scoring weights per risk mode ----
-# OnChain data requires premium APIs (Glassnode/CryptoQuant).
-# Weights redistributed to real data sources for honest scoring.
+# OnChain data now uses REAL blockchain-verified metrics
+# (Coin Metrics + Dune Analytics). Weight increased significantly.
 
 MODE_WEIGHTS = {
-    "Seguro": {"momentum": 0.25, "trend": 0.35, "sentiment": 0.25, "onChain": 0.15},
-    "Balanceado": {"momentum": 0.35, "trend": 0.30, "sentiment": 0.20, "onChain": 0.15},
-    "Agresivo": {"momentum": 0.45, "trend": 0.30, "sentiment": 0.10, "onChain": 0.15},
+    "Seguro":     {"momentum": 0.20, "trend": 0.25, "sentiment": 0.15, "onChain": 0.40},
+    "Balanceado": {"momentum": 0.25, "trend": 0.25, "sentiment": 0.15, "onChain": 0.35},
+    "Agresivo":   {"momentum": 0.35, "trend": 0.25, "sentiment": 0.10, "onChain": 0.30},
 }
 
 THRESHOLDS = {
@@ -131,30 +132,34 @@ def score_sentiment(sentiment: Dict) -> float:
     return max(0, min(100, fg * 0.70 + alt * 0.30))
 
 
-def score_onchain(onchain: Dict) -> float:
-    mvrv = max(0, min(100, (_safe_val(onchain.get("mvrvZScore"), 0.0) + 0.5) / 7.5 * 100))
-    puell = max(0, min(100, _safe_val(onchain.get("puellMultiple"), 0.0) / 4 * 100))
-    flow = max(0, min(100, (_safe_val(onchain.get("exchangeNetFlow"), 0.0) + 5000) / 10000 * 100))
-    return max(0, min(100, mvrv * 0.40 + puell * 0.30 + flow * 0.30))
-
-
 def calculate_full_score(
     indicators: Dict, sentiment: Dict, onchain: Dict,
     price: float, mode: str = "Balanceado"
 ) -> Dict:
-    w = MODE_WEIGHTS.get(mode, MODE_WEIGHTS["Balanceado"])
+    w = MODE_WEIGHTS.get(mode, MODE_WEIGHTS["Balanceado"]).copy()
     mom = score_momentum(indicators)
     trend = score_trend(indicators, price)
     sent = score_sentiment(sentiment)
-    oc = score_onchain(onchain)
+    
+    # Use v2 onchain scoring
+    oc_result = score_onchain_v2(onchain)
+    oc = oc_result["total"]
+    
+    # Adjust weights if onchain data is missing/minimal
+    if oc_result.get("dataDepth") == "minimal":
+        # Reduce onchain weight and distribute to momentum and trend
+        diff = w["onChain"] - oc_result["weight"]
+        w["onChain"] = oc_result["weight"]
+        w["momentum"] += diff * 0.5
+        w["trend"] += diff * 0.5
 
     total = mom * w["momentum"] + trend * w["trend"] + sent * w["sentiment"] + oc * w["onChain"]
 
     return {
-        "momentum": {"score": round(mom, 1), "weight": w["momentum"]},
-        "trend": {"score": round(trend, 1), "weight": w["trend"]},
-        "sentiment": {"score": round(sent, 1), "weight": w["sentiment"]},
-        "onChain": {"score": round(oc, 1), "weight": w["onChain"]},
+        "momentum": {"score": round(mom, 1), "weight": round(w["momentum"], 2)},
+        "trend": {"score": round(trend, 1), "weight": round(w["trend"], 2)},
+        "sentiment": {"score": round(sent, 1), "weight": round(w["sentiment"], 2)},
+        "onChain": {"score": round(oc, 1), "weight": round(w["onChain"], 2)},
         "total": round(total, 1),
     }
 
@@ -273,37 +278,22 @@ async def build_real_sentiment(symbol: str) -> Dict:
     }
 
 
-# ---- On-Chain (Honest: marked as unavailable without premium API) ----
+# ---- On-Chain (Real blockchain verified data) ----
 
 async def get_real_onchain(symbol: str) -> Dict:
-    """Fetch real on-chain data from free public APIs."""
+    """Fetch real on-chain data from our new unified onchain engine."""
     try:
-        summary = await get_onchain_summary()
-        if summary.get("data_available"):
-            return {
-                "mvrvZScore": summary.get("mvrv_ratio", 1.5),
-                "puellMultiple": summary.get("puell_multiple", 1.0),
-                "exchangeNetFlow": None,  # Still not available for free
-                "exchangeNetFlowLabel": "No disponible",
-                "hashRate": summary.get("btc_hashrate_ehs"),
-                "activeAddresses": summary.get("active_addresses_24h"),
-                "defiTvl": summary.get("defi_tvl_usd"),
-                "minerPrice": None,
-                "dataAvailable": True,
-            }
+        data = await get_full_onchain(symbol)
+        
+        # We return the raw data directly to calculate_full_score
+        return data
+        
     except Exception as e:
         print(f"[OnChain] Error: {e}")
     
     return {
-        "mvrvZScore": None,
-        "puellMultiple": None,
-        "exchangeNetFlow": None,
-        "exchangeNetFlowLabel": "Error al obtener datos",
-        "hashRate": None,
-        "activeAddresses": None,
-        "defiTvl": None,
-        "minerPrice": None,
-        "dataAvailable": False,
+        "dataDepth": "minimal",
+        "dataAvailable": False
     }
 
 

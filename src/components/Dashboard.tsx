@@ -11,7 +11,7 @@ import ScoreGauge from './ScoreGauge';
 import IndicatorGrid from './IndicatorGrid';
 import DCAPanel from './DCAPanel';
 import SentimentPanel from './SentimentPanel';
-import OnChainPanel from './OnChainPanel';
+import OnChainDashboard from './onchain/OnChainDashboard';
 import CandlestickChart from './CandlestickChart';
 import SmartMoneyPanel from './SmartMoneyPanel';
 import WatchlistPanel from './WatchlistPanel';
@@ -467,11 +467,18 @@ export default function Dashboard() {
       {/* Actuarial Risk Panel — Full Width */}
       <ActuarialPanel actuarial={data.actuarial} currentPrice={data.currentPrice} />
 
-      {/* Bottom Grid: Sentiment + On-Chain + AI */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Bottom Grid: Sentiment + AI */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <SentimentPanel sentiment={data.sentiment} macro={data.macro} />
-        <OnChainPanel onChain={data.onChain} symbol={data.symbol} />
         <AIPanel data={data} />
+      </div>
+
+      {/* On-Chain Dashboard (MVP v2) — Full Width */}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+          Inteligencia On-Chain
+        </h2>
+        <OnChainDashboard symbol={data.symbol} onSymbolChange={setSymbol} />
       </div>
     </div>
   );
