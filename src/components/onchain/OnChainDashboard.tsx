@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Box, DollarSign, Building2, TrendingUp, BellRing, CircleDollarSign } from 'lucide-react';
 import SignalsIndex from './SignalsIndex';
-
+import OnChainChart from '../charts/OnChainChart';
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
 
 async function fetchOnChainData(symbol: string): Promise<any> {
@@ -47,22 +47,29 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
         setData(res);
       } else {
         // Mock data fallback
+        const generateMockHistory = (base: number, volatility: number) => {
+          const hist = [];
+          for (let i = 90; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            hist.push({ time: d.toISOString().split('T')[0], value: base + (Math.random() - 0.5) * volatility });
+          }
+          return hist;
+        };
+
         setData({
-          signals: {
-            signalsIndex: 78.5,
-            sopr: 65,
-            mvrv: 42,
-            realizedPrice: 88,
-            supplyInactivePL: 30,
-            supplySpentPL: 45,
-            supplySpentProfitLP: 60,
-            profitInactiveSupply: 72,
-            profitSpentSupply: 55,
-          },
-          fundamentals: {
-            activeAddresses: { value: '1.2M', change: 5.4 },
-            txCount: { value: '350K', change: -2.1 },
-            fees: { value: '$2.5M', change: 12.8 }
+          subSignals: { mvrv: 42, sopr: 65, puell: 88, flows: 30 },
+          metrics: {
+            fundamentals: {
+              activeAddresses: 1200000,
+              txCount: 350000,
+              history: generateMockHistory(1000000, 200000).map(h => ({ ...h, activeAddresses: h.value, txCount: h.value * 0.3 }))
+            },
+            mvrv: { mvrv: 2.1, history: generateMockHistory(2.0, 0.5) },
+            realizedPrice: { realizedPrice: 35000, history: generateMockHistory(30000, 2000) },
+            sopr: { sopr: 1.05, history: generateMockHistory(1.0, 0.1) },
+            exchangeFlows: { btcNetFlow: -5000, history: generateMockHistory(0, 10000) },
+            puellMultiple: { puellMultiple: 0.8, history: generateMockHistory(1.2, 0.4) }
           }
         });
       }
@@ -104,36 +111,129 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
           </div>
         ) : (
           <div className="w-full">
-            {activeCategory === 'signals' && data?.signals && (
-              <SignalsIndex signalsData={data.signals} symbol={symbol} />
+            {/* SIGNALS (DEFAULT) */}
+            {activeCategory === 'signals' && (
+              <SignalsIndex signalsData={data.subSignals || data.signals} symbol={symbol} />
             )}
 
-            {activeCategory === 'fundamentals' && data?.fundamentals && (
+            {/* FUNDAMENTALS */}
+            {activeCategory === 'fundamentals' && (
               <div className="glass-card p-6">
                 <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">Fundamentals</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {Object.entries(data.fundamentals).map(([key, val]: [string, any]) => (
-                    <div key={key} className="indicator-card p-4 flex flex-col gap-2">
-                      <span className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">
-                        {key.replace(/([A-Z])/g, ' $1').trim()}
-                      </span>
-                      <div className="flex items-end justify-between">
-                        <span className="text-2xl font-black text-[var(--text-primary)]">{val.value}</span>
-                        <span className={`text-sm font-bold ${val.change >= 0 ? 'text-[var(--signal-buy)]' : 'text-[var(--signal-sell)]'}`}>
-                          {val.change >= 0 ? '+' : ''}{val.change}%
-                        </span>
+                {data.metrics?.fundamentals ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="indicator-card p-4">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">Active Addresses</span>
+                      <div className="text-2xl font-black text-[var(--text-primary)] mt-2">
+                        {data.metrics.fundamentals.activeAddresses?.toLocaleString()}
                       </div>
-                      <div className="h-8 mt-2 opacity-50 bg-[var(--bg-tertiary)] rounded-md border border-dashed border-[var(--border-color)] flex items-center justify-center">
-                        <span className="text-[10px] text-[var(--text-muted)]">Sparkline</span>
-                      </div>
+                      {data.metrics.fundamentals.history && (
+                        <div className="mt-4">
+                          <OnChainChart 
+                            data={data.metrics.fundamentals.history.map((h: any) => ({ time: h.time, value: h.activeAddresses }))} 
+                            symbol={symbol} title="Active Addresses (90d)" type="Line" color="#3b82f6" 
+                          />
+                        </div>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div className="indicator-card p-4">
+                      <span className="text-xs text-[var(--text-secondary)] uppercase tracking-wider">Transactions</span>
+                      <div className="text-2xl font-black text-[var(--text-primary)] mt-2">
+                        {data.metrics.fundamentals.txCount?.toLocaleString()}
+                      </div>
+                      {data.metrics.fundamentals.history && (
+                        <div className="mt-4">
+                          <OnChainChart 
+                            data={data.metrics.fundamentals.history.map((h: any) => ({ time: h.time, value: h.txCount }))} 
+                            symbol={symbol} title="Transaction Count (90d)" type="Line" color="#8b5cf6" 
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[var(--text-muted)]">No fundamentals data available for {symbol}.</p>
+                )}
               </div>
             )}
 
-            {/* Coming Soon Fallback */}
-            {activeCategory !== 'signals' && activeCategory !== 'fundamentals' && (
+            {/* PROFIT & LOSS */}
+            {activeCategory === 'profitloss' && (
+              <div className="flex flex-col gap-6">
+                {data.metrics?.realizedPrice?.history ? (
+                  <OnChainChart 
+                    data={data.metrics.realizedPrice.history}
+                    symbol={symbol}
+                    title="Realized Price"
+                    type="Line"
+                    color="#f59e0b"
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center text-[var(--text-muted)]">Realized Price data unavailable for {symbol}.</div>
+                )}
+
+                {data.metrics?.sopr?.history ? (
+                  <OnChainChart 
+                    data={data.metrics.sopr.history}
+                    symbol={symbol}
+                    title="Spent Output Profit Ratio (SOPR)"
+                    type="Area"
+                    color="#f43f5e"
+                    baseline={1.0}
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center text-[var(--text-muted)]">SOPR data unavailable for {symbol}.</div>
+                )}
+              </div>
+            )}
+
+            {/* EXCHANGES */}
+            {activeCategory === 'exchanges' && (
+              <div className="flex flex-col gap-6">
+                {data.metrics?.exchangeFlows?.history ? (
+                  <OnChainChart 
+                    data={data.metrics.exchangeFlows.history}
+                    symbol={symbol}
+                    title="Net Exchange Flows (BTC)"
+                    type="Histogram"
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center text-[var(--text-muted)]">Exchange flow data unavailable for {symbol}.</div>
+                )}
+              </div>
+            )}
+
+            {/* INDICATORS */}
+            {activeCategory === 'indicators' && (
+              <div className="flex flex-col gap-6">
+                {data.metrics?.mvrv?.history ? (
+                  <OnChainChart 
+                    data={data.metrics.mvrv.history}
+                    symbol={symbol}
+                    title="MVRV Z-Score / Ratio"
+                    type="Area"
+                    color="#0ea5e9"
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center text-[var(--text-muted)]">MVRV data unavailable for {symbol}.</div>
+                )}
+                
+                {data.metrics?.puellMultiple?.history ? (
+                  <OnChainChart 
+                    data={data.metrics.puellMultiple.history}
+                    symbol={symbol}
+                    title="Puell Multiple"
+                    type="Area"
+                    color="#ec4899"
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center text-[var(--text-muted)]">Puell Multiple data unavailable for {symbol}.</div>
+                )}
+              </div>
+            )}
+
+            {/* Coming Soon Fallback for others */}
+            {activeCategory !== 'signals' && activeCategory !== 'fundamentals' && activeCategory !== 'profitloss' && activeCategory !== 'exchanges' && activeCategory !== 'indicators' && (
               <div className="glass-card w-full min-h-[400px] flex flex-col items-center justify-center text-center p-8">
                 <Box size={48} className="mb-4 text-[var(--text-muted)] opacity-50" />
                 <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">Coming Soon</h2>

@@ -49,49 +49,122 @@ async def fetch_dune_query(query_id: int) -> list[dict] | None:
 async def get_sopr() -> dict | None:
     """
     Get Bitcoin SOPR from a well-known public Dune query.
-    Use query ID 2458921 or similar public SOPR query.
-    Returns: {"sopr": float, "asopr": float} or None
+    Returns: {"sopr": float, "asopr": float, "history": list} or None
     """
     data = await fetch_dune_query(2458921)
     if data is None:
         return None
         
-    if data:
+    if not data:
+        return {"sopr": 1.0, "asopr": 1.0, "history": []}
+        
+    # Dune often returns descending by date. We want ascending for charts, limited to 90 days
+    # Let's sort by date ascending to be sure
+    try:
+        sorted_data = sorted(data, key=lambda x: x.get("date", x.get("time", "")))
+        history = []
+        for row in sorted_data[-90:]:
+            time_str = str(row.get("date", row.get("time", ""))).split("T")[0]
+            if time_str:
+                history.append({
+                    "time": time_str,
+                    "value": float(row.get("sopr", 1.0)),
+                    "asopr": float(row.get("asopr", 1.0))
+                })
+        
+        if not history:
+            return {"sopr": 1.0, "asopr": 1.0, "history": []}
+            
+        latest = history[-1]
+        return {
+            "sopr": latest["value"],
+            "asopr": latest["asopr"],
+            "history": history
+        }
+    except Exception:
+        # Fallback to single value
         latest = data[0]
         return {
             "sopr": float(latest.get("sopr", 1.0)),
-            "asopr": float(latest.get("asopr", 1.0))
+            "asopr": float(latest.get("asopr", 1.0)),
+            "history": []
         }
-    return {"sopr": 1.0, "asopr": 1.0}
 
 async def get_exchange_flows() -> dict | None:
     """
     Get BTC/ETH exchange inflows and outflows.
-    Returns: {"btcNetFlow": float, "ethNetFlow": float} or None
+    Returns: {"btcNetFlow": float, "ethNetFlow": float, "history": list} or None
     """
-    data = await fetch_dune_query(1234567)  # Fallback query ID
+    data = await fetch_dune_query(1234567)  # Example query ID
     if data is None:
         return None
         
-    if data:
+    if not data:
+        return {"btcNetFlow": 0.0, "ethNetFlow": 0.0, "history": []}
+        
+    try:
+        sorted_data = sorted(data, key=lambda x: x.get("date", x.get("time", "")))
+        history = []
+        for row in sorted_data[-90:]:
+            time_str = str(row.get("date", row.get("time", ""))).split("T")[0]
+            if time_str:
+                history.append({
+                    "time": time_str,
+                    "value": float(row.get("btc_netflow", 0.0)),
+                    "ethNetFlow": float(row.get("eth_netflow", 0.0))
+                })
+                
+        if not history:
+            return {"btcNetFlow": 0.0, "ethNetFlow": 0.0, "history": []}
+            
+        latest = history[-1]
+        return {
+            "btcNetFlow": latest["value"],
+            "ethNetFlow": latest["ethNetFlow"],
+            "history": history
+        }
+    except Exception:
         latest = data[0]
         return {
             "btcNetFlow": float(latest.get("btc_netflow", 0.0)),
-            "ethNetFlow": float(latest.get("eth_netflow", 0.0))
+            "ethNetFlow": float(latest.get("eth_netflow", 0.0)),
+            "history": []
         }
-    return {"btcNetFlow": 0.0, "ethNetFlow": 0.0}
 
 async def get_supply_in_profit() -> dict | None:
     """
     Get percentage of BTC supply currently in profit.
-    Returns: {"supplyInProfitPercent": float} or None
+    Returns: {"supplyInProfitPercent": float, "history": list} or None
     """
-    data = await fetch_dune_query(7654321)  # Fallback query ID
+    data = await fetch_dune_query(987654) # Example query ID
     if data is None:
         return None
         
-    if data:
-        latest = data[0]
-        return {"supplyInProfitPercent": float(latest.get("percent_in_profit", 50.0))}
+    if not data:
+        return {"supplyInProfitPercent": 50.0, "history": []}
         
-    return {"supplyInProfitPercent": 50.0}
+    try:
+        sorted_data = sorted(data, key=lambda x: x.get("date", x.get("time", "")))
+        history = []
+        for row in sorted_data[-90:]:
+            time_str = str(row.get("date", row.get("time", ""))).split("T")[0]
+            if time_str:
+                history.append({
+                    "time": time_str,
+                    "value": float(row.get("supply_in_profit_pct", 50.0))
+                })
+                
+        if not history:
+            return {"supplyInProfitPercent": 50.0, "history": []}
+            
+        latest = history[-1]
+        return {
+            "supplyInProfitPercent": latest["value"],
+            "history": history
+        }
+    except Exception:
+        latest = data[0]
+        return {
+            "supplyInProfitPercent": float(latest.get("supply_in_profit_pct", 50.0)),
+            "history": []
+        }
