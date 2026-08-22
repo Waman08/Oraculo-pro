@@ -194,6 +194,14 @@ export interface ActionableData {
 }
 
 
+export interface LiquidityData {
+  openInterestUSD: number;
+  longRatio: number;
+  shortRatio: number;
+  lsRatio: number;
+  liquidityScore: number;
+}
+
 export interface MarketAnalysis {
   symbol: string;
   name: string;
@@ -210,6 +218,7 @@ export interface MarketAnalysis {
   sentiment: SentimentData;
   onChain: OnChainData;
   smartMoney: SmartMoneyData;
+  liquidity?: LiquidityData;
   macro: MacroData;
   actionableData: ActionableData;
   actuarial?: ActuarialData;

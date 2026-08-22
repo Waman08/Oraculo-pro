@@ -46,7 +46,7 @@ async def init_binance_symbols():
     """
     global BINANCE_PAIR_MAP, REVERSE_PAIR_MAP
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
             resp = await client.get(f"{BASE_URL}/exchangeInfo")
             resp.raise_for_status()
             data = resp.json()
@@ -86,7 +86,7 @@ async def fetch_klines(
     interval = TIMEFRAME_MAP.get(timeframe, "1d")
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             resp = await client.get(
                 f"{BASE_URL}/klines",
                 params={"symbol": pair, "interval": interval, "limit": limit},
@@ -122,7 +122,7 @@ async def fetch_dexscreener_ticker(symbol: str) -> Optional[Dict]:
     Supports contract address search or simple token symbol search.
     """
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             resp = await client.get(
                 "https://api.dexscreener.com/latest/dex/search",
                 params={"q": symbol},
@@ -174,7 +174,7 @@ async def fetch_ticker(symbol: str) -> Optional[Dict]:
     pair = BINANCE_PAIR_MAP.get(symbol_upper)
     if pair:
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                 resp = await client.get(
                     f"{BASE_URL}/ticker/24hr",
                     params={"symbol": pair},
@@ -201,7 +201,7 @@ async def fetch_all_tickers() -> Dict[str, Dict]:
     Returns dict mapping our symbol -> {price, priceChange24h, volume24h}.
     """
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
             # Fetch ALL tickers (no symbols param) to avoid URL length issues with 1000+ pairs
             resp = await client.get(f"{BASE_URL}/ticker/24hr")
             resp.raise_for_status()

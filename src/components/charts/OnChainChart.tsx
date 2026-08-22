@@ -37,7 +37,8 @@ export default function OnChainChart({
     if (!chartContainerRef.current || !data || data.length === 0) return;
     
     // Sort and deduplicate data by time to prevent lightweight-charts errors
-    const uniqueData = Array.from(new Map(data.map(item => [item.time, item])).values())
+    // Deep clone the items so we can safely mutate them (e.g. adding 'color' for histograms)
+    const uniqueData = Array.from(new Map(data.map(item => [item.time, { ...item }])).values())
       .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
 
     const handleResize = () => {

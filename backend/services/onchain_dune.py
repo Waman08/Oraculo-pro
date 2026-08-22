@@ -28,7 +28,7 @@ async def fetch_dune_query(query_id: int) -> list[dict] | None:
     headers = {"X-Dune-API-Key": api_key}
     
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
             response = await client.get(url, headers=headers)
             if response.status_code == 200:
                 data = response.json().get("result", {}).get("rows", [])

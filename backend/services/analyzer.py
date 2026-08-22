@@ -18,16 +18,15 @@ from services.sentiment_nlp import analyze_social_sentiment
 from services.actuarial_models import ActuarialEngine
 from services.onchain_engine import get_full_onchain, get_onchain_summary
 from services.onchain_scoring import score_onchain_v2
-
+from services.liquidity_engine import get_liquidity_data
 
 # ---- Scoring weights per risk mode ----
-# OnChain data now uses REAL blockchain-verified metrics
-# (Coin Metrics + Dune Analytics). Weight increased significantly.
-
+# OnChain data uses REAL blockchain metrics.
+# Liquidity uses REAL Futures Open Interest and L/S ratios.
 MODE_WEIGHTS = {
-    "Seguro":     {"momentum": 0.20, "trend": 0.25, "sentiment": 0.15, "onChain": 0.40},
-    "Balanceado": {"momentum": 0.25, "trend": 0.25, "sentiment": 0.15, "onChain": 0.35},
-    "Agresivo":   {"momentum": 0.35, "trend": 0.25, "sentiment": 0.10, "onChain": 0.30},
+    "Seguro":     {"momentum": 0.15, "trend": 0.20, "sentiment": 0.10, "onChain": 0.40, "liquidity": 0.15},
+    "Balanceado": {"momentum": 0.20, "trend": 0.20, "sentiment": 0.10, "onChain": 0.30, "liquidity": 0.20},
+    "Agresivo":   {"momentum": 0.25, "trend": 0.20, "sentiment": 0.10, "onChain": 0.20, "liquidity": 0.25},
 }
 
 THRESHOLDS = {
@@ -133,33 +132,40 @@ def score_sentiment(sentiment: Dict) -> float:
 
 
 def calculate_full_score(
-    indicators: Dict, sentiment: Dict, onchain: Dict,
-    price: float, mode: str = "Balanceado"
+    indicators: Dict,
+    sentiment: Dict,
+    onchain: Dict,
+    liquidity: Dict,
+    price: float,
+    mode: str = "Balanceado"
 ) -> Dict:
     w = MODE_WEIGHTS.get(mode, MODE_WEIGHTS["Balanceado"]).copy()
+    
     mom = score_momentum(indicators)
     trend = score_trend(indicators, price)
     sent = score_sentiment(sentiment)
     
-    # Use v2 onchain scoring
+    # NEW OnChain v2 scoring
     oc_result = score_onchain_v2(onchain)
-    oc = oc_result["total"]
+    oc = oc_result["score"]
     
-    # Adjust weights if onchain data is missing/minimal
-    if oc_result.get("dataDepth") == "minimal":
+    if oc_result["weight"] < w["onChain"]:
         # Reduce onchain weight and distribute to momentum and trend
         diff = w["onChain"] - oc_result["weight"]
         w["onChain"] = oc_result["weight"]
         w["momentum"] += diff * 0.5
         w["trend"] += diff * 0.5
 
-    total = mom * w["momentum"] + trend * w["trend"] + sent * w["sentiment"] + oc * w["onChain"]
+    liq = liquidity.get("liquidityScore", 50)
+    
+    total = mom * w["momentum"] + trend * w["trend"] + sent * w["sentiment"] + oc * w["onChain"] + liq * w["liquidity"]
 
     return {
         "momentum": {"score": round(mom, 1), "weight": round(w["momentum"], 2)},
         "trend": {"score": round(trend, 1), "weight": round(w["trend"], 2)},
         "sentiment": {"score": round(sent, 1), "weight": round(w["sentiment"], 2)},
         "onChain": {"score": round(oc, 1), "weight": round(w["onChain"], 2)},
+        "liquidity": {"score": round(liq, 1), "weight": round(w["liquidity"], 2)},
         "total": round(total, 1),
     }
 
@@ -504,7 +510,7 @@ def get_macro_risk_text(score: float) -> str:
 async def fetch_fear_greed() -> Optional[Dict]:
     """Fetch Fear & Greed Index from alternative.me."""
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
             resp = await client.get("https://api.alternative.me/fng/?limit=1")
             resp.raise_for_status()
             data = resp.json()
@@ -590,15 +596,16 @@ async def run_analysis(
     indicators_main = calculate_all_indicators(df_main, price)
     indicators_htf = calculate_all_indicators(df_htf, price) if df_htf is not None and not df_htf.empty else indicators_main
 
-    # 3. Get REAL sentiment / on-chain / smart money
+    # 3. Get REAL sentiment / on-chain / smart money / liquidity
     sentiment = await build_real_sentiment(symbol)
     onchain = await get_real_onchain(symbol)
     smart_money = calculate_smart_money(df_main, price)
     macro = await fetch_real_macro()
+    liquidity = await get_liquidity_data(symbol)
 
     # 4. Score (Confluence of Main + 4H)
-    breakdown_main = calculate_full_score(indicators_main, sentiment, onchain, price, mode)
-    breakdown_htf = calculate_full_score(indicators_htf, sentiment, onchain, price, mode)
+    breakdown_main = calculate_full_score(indicators_main, sentiment, onchain, liquidity, price, mode)
+    breakdown_htf = calculate_full_score(indicators_htf, sentiment, onchain, liquidity, price, mode)
     
     # Blended score: 60% Main Timeframe, 40% 4H Timeframe
     blended_total = (breakdown_main["total"] * 0.6) + (breakdown_htf["total"] * 0.4)
@@ -689,6 +696,7 @@ async def run_analysis(
         "sentiment": sentiment,
         "onChain": onchain,
         "smartMoney": smart_money,
+        "liquidity": liquidity,
         "macro": macro,
         "actuarial": actuarial_report,
         "actionableData": {

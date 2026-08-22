@@ -23,6 +23,7 @@ import dynamic from 'next/dynamic';
 const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 import BacktestBadge from './BacktestBadge';
 import { BacktestChart } from './charts/BacktestChart';
+import LiquidityPanel from './LiquidityPanel';
 import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2 } from 'lucide-react';
 import { wsManager } from '@/lib/websocket-manager';
 import { useAppStore } from '@/lib/store';
@@ -454,14 +455,15 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Grid: Score Breakdown + DCA + Smart Money */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Main Grid: Score Breakdown + DCA + Smart Money + Liquidity */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <IndicatorGrid breakdown={breakdown} />
         <DCAPanel
           actionableData={data.actionableData}
           currentPrice={data.currentPrice}
         />
         <SmartMoneyPanel smartMoney={data.smartMoney} currentPrice={data.currentPrice} />
+        <LiquidityPanel liquidity={data.liquidity} />
       </div>
 
       {/* Actuarial Risk Panel — Full Width */}

@@ -3,7 +3,12 @@
 import { useState, useEffect } from 'react';
 import { BarChart3, Box, DollarSign, Building2, TrendingUp, BellRing, CircleDollarSign } from 'lucide-react';
 import SignalsIndex from './SignalsIndex';
-import OnChainChart from '../charts/OnChainChart';
+import dynamic from 'next/dynamic';
+
+const OnChainChart = dynamic(() => import('../charts/OnChainChart'), { 
+  ssr: false,
+  loading: () => <div className="h-[400px] w-full flex items-center justify-center glass-card animate-pulse"><div className="text-[var(--text-muted)]">Cargando gráfico...</div></div>
+});
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
 
 async function fetchOnChainData(symbol: string): Promise<any> {
