@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { Search } from 'lucide-react';
 
 interface GaugeWidgetProps {
-  value: number; // 0-100
+  value?: number; // 0-100
   label: string;
   size?: 'sm' | 'md' | 'lg';
   showValue?: boolean;
@@ -23,17 +23,18 @@ export default function GaugeWidget({ value, label, size = 'md', showValue = tru
   const centerY = dims.height - 5;
   
   const gaugeData = useMemo(() => {
+    const safeValue = typeof value === 'number' && !isNaN(value) ? value : 50;
     // Semicircle: -180 to 0 degrees
-    const scoreAngle = -180 + (Math.max(0, Math.min(100, value)) / 100) * 180;
+    const scoreAngle = -180 + (Math.max(0, Math.min(100, safeValue)) / 100) * 180;
     const needleAngle = (scoreAngle * Math.PI) / 180;
     const needleX = centerX + dims.needle * Math.cos(needleAngle);
     const needleY = centerY + dims.needle * Math.sin(needleAngle);
     
     let color: string;
-    if (value <= 25) color = '#ef4444'; // Red
-    else if (value <= 40) color = '#f97316'; // Orange
-    else if (value <= 60) color = '#eab308'; // Yellow
-    else if (value <= 75) color = '#22c55e'; // Light Green
+    if (safeValue <= 25) color = '#ef4444'; // Red
+    else if (safeValue <= 40) color = '#f97316'; // Orange
+    else if (safeValue <= 60) color = '#eab308'; // Yellow
+    else if (safeValue <= 75) color = '#22c55e'; // Light Green
     else color = '#16a34a'; // Dark Green
     
     return { needleX, needleY, color };
@@ -97,7 +98,7 @@ export default function GaugeWidget({ value, label, size = 'md', showValue = tru
       <div className="flex flex-col items-center mt-2 w-full text-center">
         {showValue && (
           <span className="font-bold mb-1" style={{ fontSize: `${dims.font}px`, color: gaugeData.color }}>
-            {value.toFixed(1)}
+            {typeof value === 'number' && !isNaN(value) ? value.toFixed(1) : '-'}
           </span>
         )}
         <div className="flex items-center justify-center gap-1">

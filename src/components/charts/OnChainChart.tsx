@@ -34,7 +34,7 @@ export default function OnChainChart({
   const seriesRef = useRef<ISeriesApi<SeriesType> | null>(null);
   
   useEffect(() => {
-    if (!chartContainerRef.current || !data || data.length === 0) return;
+    if (!chartContainerRef.current || !Array.isArray(data) || data.length === 0) return;
     
     // Sort and deduplicate data by time to prevent lightweight-charts errors
     // Deep clone the items so we can safely mutate them (e.g. adding 'color' for histograms)

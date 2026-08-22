@@ -118,7 +118,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
           <div className="w-full">
             {/* SIGNALS (DEFAULT) */}
             {activeCategory === 'signals' && (
-              <SignalsIndex signalsData={data.subSignals || data.signals} symbol={symbol} />
+              <SignalsIndex signalsData={data.subSignals || data.signals || {}} symbol={symbol} />
             )}
 
             {/* FUNDAMENTALS */}
@@ -132,7 +132,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                       <div className="text-2xl font-black text-[var(--text-primary)] mt-2">
                         {data.metrics.fundamentals.activeAddresses?.toLocaleString()}
                       </div>
-                      {data.metrics.fundamentals.history && (
+                      {Array.isArray(data.metrics.fundamentals.history) && (
                         <div className="mt-4">
                           <OnChainChart 
                             data={data.metrics.fundamentals.history.map((h: any) => ({ time: h.time, value: h.activeAddresses }))} 
@@ -146,11 +146,11 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                       <div className="text-2xl font-black text-[var(--text-primary)] mt-2">
                         {data.metrics.fundamentals.txCount?.toLocaleString()}
                       </div>
-                      {data.metrics.fundamentals.history && (
+                      {Array.isArray(data.metrics.fundamentals.history) && (
                         <div className="mt-4">
                           <OnChainChart 
                             data={data.metrics.fundamentals.history.map((h: any) => ({ time: h.time, value: h.txCount }))} 
-                            symbol={symbol} title="Transaction Count (90d)" type="Line" color="#8b5cf6" 
+                            symbol={symbol} title="Transaction Count (90d)" type="Histogram" color="#f5b041" 
                           />
                         </div>
                       )}
@@ -165,7 +165,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
             {/* PROFIT & LOSS */}
             {activeCategory === 'profitloss' && (
               <div className="flex flex-col gap-6">
-                {data.metrics?.realizedPrice?.history ? (
+                {Array.isArray(data.metrics?.realizedPrice?.history) ? (
                   <OnChainChart 
                     data={data.metrics.realizedPrice.history}
                     symbol={symbol}
@@ -177,7 +177,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                   <div className="glass-card p-8 text-center text-[var(--text-muted)]">Realized Price data unavailable for {symbol}.</div>
                 )}
 
-                {data.metrics?.sopr?.history ? (
+                {Array.isArray(data.metrics?.sopr?.history) ? (
                   <OnChainChart 
                     data={data.metrics.sopr.history}
                     symbol={symbol}
@@ -195,7 +195,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
             {/* EXCHANGES */}
             {activeCategory === 'exchanges' && (
               <div className="flex flex-col gap-6">
-                {data.metrics?.exchangeFlows?.history ? (
+                {Array.isArray(data.metrics?.exchangeFlows?.history) ? (
                   <OnChainChart 
                     data={data.metrics.exchangeFlows.history}
                     symbol={symbol}
@@ -211,7 +211,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
             {/* INDICATORS */}
             {activeCategory === 'indicators' && (
               <div className="flex flex-col gap-6">
-                {data.metrics?.mvrv?.history ? (
+                {Array.isArray(data.metrics?.mvrv?.history) ? (
                   <OnChainChart 
                     data={data.metrics.mvrv.history}
                     symbol={symbol}
@@ -223,7 +223,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                   <div className="glass-card p-8 text-center text-[var(--text-muted)]">MVRV data unavailable for {symbol}.</div>
                 )}
                 
-                {data.metrics?.puellMultiple?.history ? (
+                {Array.isArray(data.metrics?.puellMultiple?.history) ? (
                   <OnChainChart 
                     data={data.metrics.puellMultiple.history}
                     symbol={symbol}
