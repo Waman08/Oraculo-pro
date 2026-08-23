@@ -75,52 +75,58 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
             </div>
 
             <div className="space-y-2.5">
-              {smartMoney.orderBlocks.map((ob, idx) => {
-                const isBullish = ob.type === 'bullish';
-                const color = isBullish ? 'var(--signal-buy)' : 'var(--signal-sell)';
-                const dimColor = isBullish ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)';
-                const Icon = isBullish ? TrendingUp : TrendingDown;
+              {smartMoney.orderBlocks && smartMoney.orderBlocks.length > 0 ? (
+                smartMoney.orderBlocks.map((ob, idx) => {
+                  const isBullish = ob.type === 'bullish';
+                  const color = isBullish ? 'var(--signal-buy)' : 'var(--signal-sell)';
+                  const dimColor = isBullish ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)';
+                  const Icon = isBullish ? TrendingUp : TrendingDown;
 
-                return (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-xl border border-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.08)] transition-all"
-                    style={{ background: 'var(--bg-secondary)' }}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="p-1 rounded bg-[rgba(255,255,255,0.02)]">
-                          <Icon size={12} style={{ color }} />
-                        </span>
-                        <span className="text-xs font-bold" style={{ color }}>
-                          {isBullish ? t('smartmoney.bullish') || 'Bullish' : t('smartmoney.bearish') || 'Bearish'} OB
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl border border-[rgba(255,255,255,0.03)] hover:border-[rgba(255,255,255,0.08)] transition-all"
+                      style={{ background: 'var(--bg-secondary)' }}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1 rounded bg-[rgba(255,255,255,0.02)]">
+                            <Icon size={12} style={{ color }} />
+                          </span>
+                          <span className="text-xs font-bold" style={{ color }}>
+                            {isBullish ? t('smartmoney.bullish') || 'Bullish' : t('smartmoney.bearish') || 'Bearish'} OB
+                          </span>
+                        </div>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[rgba(255,255,255,0.05)] text-[var(--text-muted)]">
+                          {isBullish ? 'Demanda' : 'Oferta'}
                         </span>
                       </div>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[rgba(255,255,255,0.05)] text-[var(--text-muted)]">
-                        {isBullish ? 'Demanda' : 'Oferta'}
-                      </span>
-                    </div>
 
-                    <div className="flex items-end justify-between">
-                      <div className="text-xs font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
-                        ${formatSMPrice(ob.priceLow)} — ${formatSMPrice(ob.priceHigh)}
-                      </div>
-                      <div className="w-[80px] text-right">
-                        <div className="flex items-center justify-between gap-1 mb-0.5">
-                          <span className="text-[8px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Fuerza</span>
-                          <span className="text-[9px] font-bold font-mono" style={{ color }}>{ob.strength}%</span>
+                      <div className="flex items-end justify-between">
+                        <div className="text-xs font-mono font-bold" style={{ color: 'var(--text-primary)' }}>
+                          ${formatSMPrice(ob.priceLow)} — ${formatSMPrice(ob.priceHigh)}
                         </div>
-                        <div className="h-1 w-full bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
-                          <div className="h-full rounded-full" style={{
-                            width: `${ob.strength}%`,
-                            background: color,
-                          }} />
+                        <div className="w-[80px] text-right">
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-[8px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Fuerza</span>
+                            <span className="text-[9px] font-bold font-mono" style={{ color }}>{ob.strength}%</span>
+                          </div>
+                          <div className="h-1 w-full bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
+                            <div className="h-full rounded-full" style={{
+                              width: `${ob.strength}%`,
+                              background: color,
+                            }} />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="text-center p-4 text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-xl border border-[rgba(255,255,255,0.03)]">
+                  No patterns detected
+                </div>
+              )}
             </div>
           </div>
 
@@ -134,42 +140,48 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
-              {smartMoney.fairValueGaps.map((fvg, idx) => {
-                const isBullish = fvg.type === 'bullish';
-                const color = isBullish ? 'var(--signal-buy)' : 'var(--signal-sell)';
+              {smartMoney.fairValueGaps && smartMoney.fairValueGaps.length > 0 ? (
+                smartMoney.fairValueGaps.map((fvg, idx) => {
+                  const isBullish = fvg.type === 'bullish';
+                  const color = isBullish ? 'var(--signal-buy)' : 'var(--signal-sell)';
 
-                return (
-                  <div
-                    key={idx}
-                    className="p-2.5 rounded-xl border transition-all"
-                    style={{
-                      background: 'var(--bg-secondary)',
-                      border: `1px solid ${fvg.filled ? 'var(--border-color)' : color}`,
-                      opacity: fvg.filled ? 0.4 : 1,
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] font-bold" style={{ color }}>
-                        {isBullish ? '🟢 BULLISH' : '🔴 BEARISH'}
-                      </span>
-                      {fvg.filled ? (
-                        <CheckCircle2 size={10} style={{ color: 'var(--text-muted)' }} />
-                      ) : (
-                        <Eye size={10} style={{ color }} className="animate-pulse" />
-                      )}
+                  return (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl border transition-all"
+                      style={{
+                        background: 'var(--bg-secondary)',
+                        border: `1px solid ${fvg.filled ? 'var(--border-color)' : color}`,
+                        opacity: fvg.filled ? 0.4 : 1,
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[9px] font-bold" style={{ color }}>
+                          {isBullish ? '🟢 BULLISH' : '🔴 BEARISH'}
+                        </span>
+                        {fvg.filled ? (
+                          <CheckCircle2 size={10} style={{ color: 'var(--text-muted)' }} />
+                        ) : (
+                          <Eye size={10} style={{ color }} className="animate-pulse" />
+                        )}
+                      </div>
+                      <div className="text-xs font-mono font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                        ${formatSMPrice(fvg.low)}—${formatSMPrice(fvg.high)}
+                      </div>
+                      <div className="flex items-center justify-between text-[8px] font-bold">
+                        <span style={{ color: 'var(--text-muted)' }}>ESTADO</span>
+                        <span style={{ color: fvg.filled ? 'var(--text-muted)' : color }}>
+                          {fvg.filled ? 'MITIGADO' : 'ABIERTO'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xs font-mono font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-                      ${formatSMPrice(fvg.low)}—${formatSMPrice(fvg.high)}
-                    </div>
-                    <div className="flex items-center justify-between text-[8px] font-bold">
-                      <span style={{ color: 'var(--text-muted)' }}>ESTADO</span>
-                      <span style={{ color: fvg.filled ? 'var(--text-muted)' : color }}>
-                        {fvg.filled ? 'MITIGADO' : 'ABIERTO'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              ) : (
+                <div className="col-span-2 text-center p-4 text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)] rounded-xl border border-[rgba(255,255,255,0.03)]">
+                  No patterns detected
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -179,6 +191,7 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
 }
 
 function formatSMPrice(price: number): string {
+  if (price === undefined || price === null || isNaN(price)) return '0.00';
   if (price >= 1000) return price.toLocaleString('en-US', { maximumFractionDigits: 0 });
   if (price >= 1) return price.toFixed(2);
   return price.toFixed(4);

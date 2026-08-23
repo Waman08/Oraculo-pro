@@ -66,7 +66,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
                       {t(CATEGORY_KEYS[key])}
                     </div>
                     <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      {(data.weight * 100).toFixed(0)}% {t('general.weight')}
+                      {(typeof data.weight === 'number' && !isNaN(data.weight)) ? (data.weight * 100).toFixed(0) : '0'}% {t('general.weight')}
                     </div>
                   </div>
                 </div>
@@ -74,7 +74,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
                   className="text-lg font-black"
                   style={{ color: getScoreColor(data.score) }}
                 >
-                  {data.score.toFixed(1)}
+                  {(typeof data.score === 'number' && !isNaN(data.score)) ? data.score.toFixed(1) : '0.0'}
                 </div>
               </div>
 
@@ -108,7 +108,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {typeof ind.value === 'number' ? ind.value.toFixed(2) : ind.value}
+                        {typeof ind.value === 'number' && !isNaN(ind.value) ? ind.value.toFixed(2) : ind.value}
                       </span>
                       <span
                         className="font-bold text-xs px-2 py-0.5 rounded"

@@ -21,10 +21,10 @@ from services.analyzer import run_analysis, run_screener_analysis_fast
 from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, is_supported, BINANCE_PAIR_MAP, init_binance_symbols, fetch_klines
 from services.indicators import calculate_all_indicators
 from services.backtester import run_backtest
-from services.onchain_engine import get_full_onchain, get_signals_index
+from services.onchain_engine import get_full_onchain, get_signals_index, get_onchain_summary
 from services.onchain_stablecoins import get_stablecoin_chains, get_stablecoin_overview
 from services.onchain_scoring import score_onchain_v2
-from services.whale_tracker import get_recent_whale_movements
+# AUDIT FIX: whale_tracker removed (was 100% fake random data)
 from services.user_prefs import get_user_prefs, save_user_prefs
 
 import api_public
@@ -380,17 +380,15 @@ async def symbols():
 @app.get("/api/onchain")
 async def onchain_data():
     """
-    Phase 6: On-Chain Analytics and Whale Tracking
-    Fetches global on-chain metrics and recent whale movements.
+    Global On-Chain Analytics.
+    AUDIT FIX: Removed fake whale_tracker (was 100% random data).
     """
     try:
         summary = await get_onchain_summary()
-        whales = await get_recent_whale_movements(limit=10)
         
         return {
             "success": True,
             "summary": summary,
-            "whale_movements": whales
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

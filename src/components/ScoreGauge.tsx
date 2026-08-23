@@ -158,7 +158,7 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
           dominantBaseline="middle"
           style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
         >
-          {score.toFixed(1)}
+          {(typeof score === 'number' && !isNaN(score)) ? score.toFixed(1) : '0.0'}
         </text>
       </svg>
 

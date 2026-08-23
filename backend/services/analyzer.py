@@ -1,6 +1,9 @@
 # ============================================================
 # ANALYZER — Orchestrator: fetch data → calculate → score → signal
 # ============================================================
+# AUDIT FIX: Removed all fake data sources (sentiment_nlp, whale_tracker)
+# All weights now only use verified real data.
+# ============================================================
 
 import httpx
 import math
@@ -14,19 +17,22 @@ from services.candlestick_patterns import detect_candlestick_patterns
 from services.divergence_detector import detect_divergences
 from services.ml_predictor import predict_direction
 from services.volume_anomaly import detect_volume_anomaly
-from services.sentiment_nlp import analyze_social_sentiment
 from services.actuarial_models import ActuarialEngine
 from services.onchain_engine import get_full_onchain, get_onchain_summary
 from services.onchain_scoring import score_onchain_v2
 from services.liquidity_engine import get_liquidity_data
 
 # ---- Scoring weights per risk mode ----
-# OnChain data uses REAL blockchain metrics.
-# Liquidity uses REAL Futures Open Interest and L/S ratios.
+# ALL sources are REAL verified data:
+# - Momentum: RSI, MACD, Stochastic from real Binance klines (pandas-ta)
+# - Trend: EMAs, ADX, Supertrend from real Binance klines (pandas-ta)
+# - Sentiment: Fear & Greed (alternative.me) + Altcoin Season (Binance 90d perf)
+# - OnChain: CoinMetrics Community API (real blockchain data)
+# - Liquidity: Binance Futures OI + L/S Ratio (real derivatives data)
 MODE_WEIGHTS = {
-    "Seguro":     {"momentum": 0.15, "trend": 0.20, "sentiment": 0.10, "onChain": 0.40, "liquidity": 0.15},
-    "Balanceado": {"momentum": 0.20, "trend": 0.20, "sentiment": 0.10, "onChain": 0.30, "liquidity": 0.20},
-    "Agresivo":   {"momentum": 0.25, "trend": 0.20, "sentiment": 0.10, "onChain": 0.20, "liquidity": 0.25},
+    "Seguro":     {"momentum": 0.25, "trend": 0.25, "sentiment": 0.10, "onChain": 0.25, "liquidity": 0.15},
+    "Balanceado": {"momentum": 0.30, "trend": 0.25, "sentiment": 0.10, "onChain": 0.20, "liquidity": 0.15},
+    "Agresivo":   {"momentum": 0.30, "trend": 0.25, "sentiment": 0.10, "onChain": 0.15, "liquidity": 0.20},
 }
 
 THRESHOLDS = {
@@ -145,9 +151,9 @@ def calculate_full_score(
     trend = score_trend(indicators, price)
     sent = score_sentiment(sentiment)
     
-    # NEW OnChain v2 scoring
+    # OnChain v2 scoring — uses .get() to prevent KeyError crash
     oc_result = score_onchain_v2(onchain)
-    oc = oc_result["score"]
+    oc = oc_result.get("score", oc_result.get("total", 50.0))
     
     if oc_result["weight"] < w["onChain"]:
         # Reduce onchain weight and distribute to momentum and trend
@@ -371,19 +377,12 @@ def calculate_smart_money(df: pd.DataFrame, price: float) -> Dict:
         final_fvgs = []
         if bullish_fvgs:
             final_fvgs.append(bullish_fvgs[0])
-        else:
-            final_fvgs.append({"type": "bullish", "high": round(price * 0.96, 2), "low": round(price * 0.94, 2), "filled": False})
-            
         if bearish_fvgs:
             final_fvgs.append(bearish_fvgs[0])
-        else:
-            final_fvgs.append({"type": "bearish", "high": round(price * 1.06, 2), "low": round(price * 1.04, 2), "filled": False})
+        # AUDIT FIX: If no FVGs detected, return empty list — never fabricate fake ones
     except Exception as e:
         print(f"[SmartMoney] Error calculating FVGs: {e}")
-        final_fvgs = [
-            {"type": "bullish", "high": round(price * 0.96, 2), "low": round(price * 0.94, 2), "filled": False},
-            {"type": "bearish", "high": round(price * 1.08, 2), "low": round(price * 1.06, 2), "filled": False},
-        ]
+        final_fvgs = []
 
     # 3. Order Blocks (OB)
     try:
@@ -423,19 +422,10 @@ def calculate_smart_money(df: pd.DataFrame, price: float) -> Dict:
                     "strength": min(95, max(45, int(block_candle["volume"] / df["volume"].mean() * 50)))
                 })
                 break
-                
-        if len(obs) < 2:
-            existing = [o["type"] for o in obs]
-            if "bullish" not in existing:
-                obs.append({"type": "bullish", "priceHigh": round(price * 0.93, 2), "priceLow": round(price * 0.90, 2), "strength": 70})
-            if "bearish" not in existing:
-                obs.append({"type": "bearish", "priceHigh": round(price * 1.12, 2), "priceLow": round(price * 1.10, 2), "strength": 60})
+        # AUDIT FIX: If no OBs detected, return empty list — never fabricate fake ones
     except Exception as e:
         print(f"[SmartMoney] Error calculating OBs: {e}")
-        obs = [
-            {"type": "bullish", "priceHigh": round(price * 0.93, 2), "priceLow": round(price * 0.90, 2), "strength": 60},
-            {"type": "bearish", "priceHigh": round(price * 1.12, 2), "priceLow": round(price * 1.10, 2), "strength": 50},
-        ]
+        obs = []
 
     return {
         "volumeProfilePOC": poc,
@@ -613,7 +603,8 @@ async def run_analysis(
     # ML Prediction and Volume Anomaly
     ml_prediction = predict_direction(df_main)
     volume_anomaly = detect_volume_anomaly(df_main)
-    nlp_sentiment = analyze_social_sentiment(symbol, float(change_24h))
+    # AUDIT FIX: sentiment_nlp was 100% fake (random.uniform). Removed.
+    nlp_sentiment = {"score": 50, "label": "Neutral", "source": "disabled"}
 
     # Actuarial Risk Models
     try:

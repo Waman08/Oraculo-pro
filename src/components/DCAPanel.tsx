@@ -147,6 +147,7 @@ export default function DCAPanel({ actionableData, currentPrice }: DCAPanelProps
 }
 
 function formatPrice(price: number): string {
+  if (price === undefined || price === null || isNaN(price)) return '0.00';
   if (price >= 1000) return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (price >= 1) return price.toFixed(2);
   if (price >= 0.01) return price.toFixed(4);

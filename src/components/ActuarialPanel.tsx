@@ -16,6 +16,7 @@ interface ActuarialData {
 }
 
 function fmtPrice(p: number): string {
+  if (p === undefined || p === null || isNaN(p)) return '0.00';
   if (p >= 1000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (p >= 1) return '$' + p.toFixed(2);
   return '$' + p.toFixed(6);

@@ -1,5 +1,5 @@
 # ============================================================
-# ON-CHAIN SCORING — Normalize raw on-chain metrics to 0-100 scores
+# ON-CHAIN SCORING v3 — Fixed: properly extracts values from dicts
 # ============================================================
 #
 # Scoring Convention:
@@ -8,7 +8,8 @@
 #   50-70 = Neutral / Distribution
 #   70-100 = VENTA zone (market overvalued / euphoria)
 #
-# Each function takes a raw metric value and returns a score 0-100.
+# CRITICAL FIX: onchain_engine returns dicts like {"mvrv": 2.3, "marketCap": ...}
+# We must extract the float value BEFORE passing to normalizers.
 # ============================================================
 
 import math
@@ -31,7 +32,7 @@ def _clamp(value: float, lo: float = 0.0, hi: float = 100.0) -> float:
 
 
 # ============================================================
-# Individual Metric Normalizers
+# Individual Metric Normalizers (accept FLOAT values only)
 # ============================================================
 
 def normalize_mvrv(mvrv: float) -> float:
@@ -60,15 +61,6 @@ def normalize_mvrv(mvrv: float) -> float:
 
 
 def normalize_sopr(sopr: float) -> float:
-    """
-    SOPR (Spent Output Profit Ratio):
-    - < 0.90  → 0-10   (Deep capitulation — strong buy)
-    - 0.90-0.97 → 10-25 (Capitulation)
-    - 0.97-1.00 → 25-40 (Holders at break-even)
-    - 1.00-1.03 → 40-55 (Slight profit-taking)
-    - 1.03-1.10 → 55-75 (Distribution)
-    - > 1.10  → 75-100 (Euphoria / top)
-    """
     sopr = _safe(sopr, 1.0)
     if sopr < 0.90:
         return _clamp(sopr / 0.90 * 10, 0, 10)
@@ -85,13 +77,6 @@ def normalize_sopr(sopr: float) -> float:
 
 
 def normalize_realized_price(market_price: float, realized_price: float) -> float:
-    """
-    Market Price vs Realized Price:
-    - Price far below realized → strong buy (0-20)
-    - Price near realized → accumulation (20-40)
-    - Price 1.5x-2.5x realized → fair value (40-65)
-    - Price > 3x realized → overheated (65-100)
-    """
     market_price = _safe(market_price, 1.0)
     realized_price = _safe(realized_price, 1.0)
     if realized_price <= 0:
@@ -114,27 +99,12 @@ def normalize_realized_price(market_price: float, realized_price: float) -> floa
 
 
 def normalize_exchange_flow(net_flow: float) -> float:
-    """
-    Exchange Net Flow (BTC):
-    - Large negative (outflow) = bullish (coins leaving exchanges) → low score (buy)
-    - Large positive (inflow) = bearish (coins entering exchanges) → high score (sell)
-    Scale: roughly -5000 to +5000 BTC/day
-    """
     net_flow = _safe(net_flow, 0.0)
-    # Normalize from [-5000, +5000] to [0, 100]
     normalized = (net_flow + 5000) / 10000 * 100
     return _clamp(normalized, 0, 100)
 
 
 def normalize_supply_profit(supply_in_profit_pct: float) -> float:
-    """
-    Supply in Profit (%):
-    - < 40% → 0-15  (Mass capitulation — strong buy)
-    - 40-60% → 15-35 (Bear market bottom area)
-    - 60-80% → 35-55 (Recovery / neutral)
-    - 80-92% → 55-75 (Bull market)
-    - > 92%  → 75-100 (Euphoria — sell)
-    """
     pct = _safe(supply_in_profit_pct, 50.0)
     if pct < 40:
         return _clamp(pct / 40 * 15, 0, 15)
@@ -149,14 +119,6 @@ def normalize_supply_profit(supply_in_profit_pct: float) -> float:
 
 
 def normalize_puell(puell: float) -> float:
-    """
-    Puell Multiple:
-    - < 0.5  → 0-15   (Miners capitulating — bottom)
-    - 0.5-1.0 → 15-35 (Low revenue — accumulation)
-    - 1.0-1.5 → 35-55 (Normal)
-    - 1.5-3.0 → 55-75 (Elevated)
-    - > 3.0  → 75-100 (Euphoria)
-    """
     puell = _safe(puell, 1.0)
     if puell < 0.5:
         return _clamp(puell / 0.5 * 15, 0, 15)
@@ -178,51 +140,74 @@ def score_onchain_v2(onchain: Dict) -> Dict:
     """
     Calculate the comprehensive on-chain score from verified blockchain data.
     
+    CRITICAL FIX: Properly extracts float values from sub-dictionaries.
+    onchain_engine returns: {"mvrv": {"mvrv": 2.3, "marketCap": ...}, ...}
+    We must do: onchain["mvrv"]["mvrv"] to get the float.
+    
     Returns a dict with:
     - total: float (0-100, the aggregate on-chain score)
+    - score: float (same as total, for backward compatibility with analyzer.py)
     - subScores: dict of individual metric scores
     - dataDepth: 'full' | 'partial' | 'minimal'
+    - weight: recommended weight for this score in the final blend
     """
     data_depth = onchain.get("dataDepth", "minimal")
     
     sub_scores = {}
     weights = {}
     
-    # Always available metrics (from Coin Metrics for BTC/ETH)
-    if onchain.get("mvrv") is not None:
-        sub_scores["mvrv"] = normalize_mvrv(onchain["mvrv"])
-        weights["mvrv"] = 0.25
+    # MVRV — extract float from dict
+    mvrv_data = onchain.get("mvrv")
+    if mvrv_data and isinstance(mvrv_data, dict):
+        mvrv_val = mvrv_data.get("mvrv")
+        if mvrv_val is not None:
+            sub_scores["mvrv"] = normalize_mvrv(mvrv_val)
+            weights["mvrv"] = 0.30
     
-    if onchain.get("realizedPrice") is not None and onchain.get("marketPrice") is not None:
-        sub_scores["realizedPrice"] = normalize_realized_price(
-            onchain["marketPrice"], onchain["realizedPrice"]
-        )
-        weights["realizedPrice"] = 0.15
+    # Realized Price — extract both market and realized price from dict
+    rp_data = onchain.get("realizedPrice")
+    if rp_data and isinstance(rp_data, dict):
+        rp_val = rp_data.get("realizedPrice")
+        mkt_val = rp_data.get("marketPrice") or rp_data.get("currentPrice")
+        if rp_val and mkt_val and rp_val > 0:
+            sub_scores["realizedPrice"] = normalize_realized_price(mkt_val, rp_val)
+            weights["realizedPrice"] = 0.20
     
-    if onchain.get("puellMultiple") is not None:
-        sub_scores["puell"] = normalize_puell(onchain["puellMultiple"])
-        weights["puell"] = 0.10
+    # Puell Multiple — extract float from dict
+    puell_data = onchain.get("puellMultiple")
+    if puell_data and isinstance(puell_data, dict):
+        puell_val = puell_data.get("puellMultiple")
+        if puell_val is not None:
+            sub_scores["puell"] = normalize_puell(puell_val)
+            weights["puell"] = 0.15
     
-    # Dune-dependent metrics (optional)
-    if onchain.get("sopr") is not None:
-        sub_scores["sopr"] = normalize_sopr(onchain["sopr"])
+    # SOPR — extract float from dict
+    sopr_data = onchain.get("sopr")
+    if sopr_data and isinstance(sopr_data, dict):
+        sopr_val = sopr_data.get("sopr")
+        if sopr_val is not None:
+            sub_scores["sopr"] = normalize_sopr(sopr_val)
+            weights["sopr"] = 0.20
+    elif sopr_data and isinstance(sopr_data, (int, float)):
+        sub_scores["sopr"] = normalize_sopr(sopr_data)
         weights["sopr"] = 0.20
     
-    if onchain.get("exchangeNetFlow") is not None:
-        sub_scores["exchangeFlow"] = normalize_exchange_flow(onchain["exchangeNetFlow"])
-        weights["exchangeFlow"] = 0.15
-    
-    if onchain.get("supplyInProfit") is not None:
-        sub_scores["supplyProfit"] = normalize_supply_profit(onchain["supplyInProfit"])
-        weights["supplyProfit"] = 0.15
+    # Exchange Flows — extract float from dict
+    flow_data = onchain.get("exchangeFlows")
+    if flow_data and isinstance(flow_data, dict):
+        flow_val = flow_data.get("netFlow") or flow_data.get("btcNetFlow")
+        if flow_val is not None:
+            sub_scores["exchangeFlow"] = normalize_exchange_flow(flow_val)
+            weights["exchangeFlow"] = 0.15
     
     # If no metrics available at all, return neutral
     if not sub_scores:
         return {
             "total": 50.0,
+            "score": 50.0,
             "subScores": {},
             "dataDepth": "minimal",
-            "weight": 0.10,  # Reduced weight when no real data
+            "weight": 0.05,  # Very low weight when no real data
         }
     
     # Normalize weights to sum to 1.0
@@ -237,16 +222,16 @@ def score_onchain_v2(onchain: Dict) -> Dict:
     total = round(_clamp(total), 1)
     
     # Determine recommended weight for the aggregate score
-    # More data available = more weight in final scoring
     if data_depth == "full":
-        recommended_weight = 0.35  # Full on-chain data: 35% of final score
+        recommended_weight = 0.30
     elif data_depth == "partial":
-        recommended_weight = 0.25  # Partial: 25%
+        recommended_weight = 0.15
     else:
-        recommended_weight = 0.10  # Minimal: 10%
+        recommended_weight = 0.05
     
     return {
         "total": total,
+        "score": total,  # Backward compat with analyzer.py
         "subScores": {k: round(v, 1) for k, v in sub_scores.items()},
         "dataDepth": data_depth,
         "weight": recommended_weight,

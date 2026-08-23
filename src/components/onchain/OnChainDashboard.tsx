@@ -50,33 +50,6 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
       if (!mounted) return;
       if (res) {
         setData(res);
-      } else {
-        // Mock data fallback
-        const generateMockHistory = (base: number, volatility: number) => {
-          const hist = [];
-          for (let i = 90; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            hist.push({ time: d.toISOString().split('T')[0], value: base + (Math.random() - 0.5) * volatility });
-          }
-          return hist;
-        };
-
-        setData({
-          subSignals: { mvrv: 42, sopr: 65, puell: 88, flows: 30 },
-          metrics: {
-            fundamentals: {
-              activeAddresses: 1200000,
-              txCount: 350000,
-              history: generateMockHistory(1000000, 200000).map(h => ({ ...h, activeAddresses: h.value, txCount: h.value * 0.3 }))
-            },
-            mvrv: { mvrv: 2.1, history: generateMockHistory(2.0, 0.5) },
-            realizedPrice: { realizedPrice: 35000, history: generateMockHistory(30000, 2000) },
-            sopr: { sopr: 1.05, history: generateMockHistory(1.0, 0.1) },
-            exchangeFlows: { btcNetFlow: -5000, history: generateMockHistory(0, 10000) },
-            puellMultiple: { puellMultiple: 0.8, history: generateMockHistory(1.2, 0.4) }
-          }
-        });
       }
       setLoading(false);
     });
@@ -113,6 +86,10 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
         {loading ? (
           <div className="glass-card w-full h-full min-h-[400px] flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent-gold)]"></div>
+          </div>
+        ) : !data ? (
+          <div className="glass-card p-8 text-center h-full flex flex-col items-center justify-center">
+            <p className="text-[var(--text-muted)]">Datos on-chain requieren el backend de análisis activo.</p>
           </div>
         ) : (
           <div className="w-full">

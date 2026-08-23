@@ -22,6 +22,7 @@ export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
 
   // Format Open Interest to Millions/Billions
   const formatOI = (val: number) => {
+    if (val === undefined || val === null || isNaN(val)) return '$0.00';
     if (val > 1e9) return `$${(val / 1e9).toFixed(2)}B`;
     if (val > 1e6) return `$${(val / 1e6).toFixed(2)}M`;
     return `$${val.toLocaleString()}`;
@@ -73,7 +74,7 @@ export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
                 Long / Short Ratio (Top Traders)
               </span>
               <span className="text-xs font-bold font-mono" style={{ color: crowdColor }}>
-                {liquidity.lsRatio.toFixed(2)}
+                {(typeof liquidity.lsRatio === 'number' && !isNaN(liquidity.lsRatio)) ? liquidity.lsRatio.toFixed(2) : '0.00'}
               </span>
             </div>
             
@@ -83,8 +84,8 @@ export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
             </div>
             
             <div className="flex justify-between text-[10px] font-bold font-mono">
-              <span className="text-[var(--signal-buy)]">L: {(liquidity.longRatio * 100).toFixed(1)}%</span>
-              <span className="text-[var(--signal-sell)]">S: {(liquidity.shortRatio * 100).toFixed(1)}%</span>
+              <span className="text-[var(--signal-buy)]">L: {(typeof liquidity.longRatio === 'number' && !isNaN(liquidity.longRatio)) ? (liquidity.longRatio * 100).toFixed(1) : '0.0'}%</span>
+              <span className="text-[var(--signal-sell)]">S: {(typeof liquidity.shortRatio === 'number' && !isNaN(liquidity.shortRatio)) ? (liquidity.shortRatio * 100).toFixed(1) : '0.0'}%</span>
             </div>
           </div>
 
