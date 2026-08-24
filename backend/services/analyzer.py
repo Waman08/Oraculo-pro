@@ -21,6 +21,7 @@ from services.actuarial_models import ActuarialEngine
 from services.onchain_engine import get_full_onchain, get_onchain_summary
 from services.onchain_scoring import score_onchain_v2
 from services.liquidity_engine import get_liquidity_data
+from services.supply_dynamics import get_supply_data, score_supply_dynamics
 
 # ---- Scoring weights per risk mode ----
 # ALL sources are REAL verified data:
@@ -593,6 +594,12 @@ async def run_analysis(
     macro = await fetch_real_macro()
     liquidity = await get_liquidity_data(symbol)
 
+    # Supply Dynamics (tokenomics analysis)
+    try:
+        supply_data = await get_supply_data(symbol)
+    except Exception as e:
+        print(f"[Analyzer] Supply dynamics error: {e}")
+        supply_data = None
     # 4. Score (Confluence of Main + 4H)
     breakdown_main = calculate_full_score(indicators_main, sentiment, onchain, liquidity, price, mode)
     breakdown_htf = calculate_full_score(indicators_htf, sentiment, onchain, liquidity, price, mode)
@@ -688,6 +695,7 @@ async def run_analysis(
         "onChain": onchain,
         "smartMoney": smart_money,
         "liquidity": liquidity,
+        "supplyDynamics": supply_data,
         "macro": macro,
         "actuarial": actuarial_report,
         "actionableData": {

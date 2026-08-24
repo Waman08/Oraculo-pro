@@ -22,8 +22,9 @@ from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, i
 from services.indicators import calculate_all_indicators
 from services.backtester import run_backtest
 from services.onchain_engine import get_full_onchain, get_signals_index, get_onchain_summary
-from services.onchain_stablecoins import get_stablecoin_chains, get_stablecoin_overview
+from services.onchain_stablecoins import get_stablecoin_chains, get_stablecoin_overview, get_full_stablecoin_analysis
 from services.onchain_scoring import score_onchain_v2
+from services.supply_dynamics import get_supply_data
 # AUDIT FIX: whale_tracker removed (was 100% fake random data)
 from services.user_prefs import get_user_prefs, save_user_prefs
 
@@ -390,6 +391,43 @@ async def onchain_data():
             "success": True,
             "summary": summary,
         }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# SUPPLY DYNAMICS ENDPOINTS
+# ============================================================
+
+@app.get("/api/supply/{symbol}")
+async def supply_dynamics(symbol: str):
+    """
+    Get token supply analysis: circulating/total/max supply, FDV, dilution risk.
+    Source: CoinGecko API (real data).
+    """
+    try:
+        data = await get_supply_data(symbol)
+        if not data:
+            return {"symbol": symbol.upper(), "available": False, "message": "Supply data not available for this token"}
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+# STABLECOIN ANALYSIS ENDPOINTS
+# ============================================================
+
+@app.get("/api/stablecoins/analysis")
+async def stablecoin_analysis():
+    """
+    Get comprehensive stablecoin market analysis.
+    Includes: SSR, USDT/USDC flows, chain distribution.
+    Source: DeFiLlama Stablecoins API (real data).
+    """
+    try:
+        data = await get_full_stablecoin_analysis()
+        return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

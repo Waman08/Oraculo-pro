@@ -13,6 +13,7 @@ from typing import Dict, Any
 
 from services.onchain_coinmetrics import get_mvrv, get_realized_price, get_network_fundamentals, get_puell_multiple
 from services.onchain_stablecoins import get_stablecoin_overview, get_defi_tvl_by_chain
+from services.onchain_defillama import get_full_defillama_metrics, score_defillama_metrics
 
 _onchain_full_cache: dict = {}
 ONCHAIN_CACHE_TTL = 3600  # 1 hour
@@ -99,17 +100,23 @@ async def get_full_onchain(symbol: str) -> dict:
         except Exception as e:
             print(f"[OnChainEngine] Puell error for {cache_key}: {e}")
     
-    # NOTE: Dune Analytics queries removed — the query IDs were fake placeholders.
-    # SOPR, Exchange Flows, and Supply in Profit require paid Dune/Glassnode access.
-    # These will be re-added when real query IDs are available.
+    # DeFiLlama metrics for altcoins (TVL, Fees, DEX Volume)
+    # This provides real on-chain health data for chains that CoinMetrics doesn't cover deeply
+    try:
+        defillama = await get_full_defillama_metrics(cache_key)
+        if defillama and defillama.get("metricsAvailable", 0) > 0:
+            result["defillama"] = defillama
+    except Exception as e:
+        print(f"[OnChainEngine] DeFiLlama error for {cache_key}: {e}")
     
     # Determine honest data depth
     has_mvrv = "mvrv" in result
     has_fundamentals = "fundamentals" in result
+    has_defillama = "defillama" in result and result.get("defillama", {}).get("metricsAvailable", 0) >= 2
     
     if has_mvrv and has_fundamentals:
         result["dataDepth"] = "full"
-    elif has_fundamentals:
+    elif has_defillama or has_fundamentals:
         result["dataDepth"] = "partial"
     else:
         result["dataDepth"] = "minimal"

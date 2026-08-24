@@ -390,5 +390,26 @@
     "signal": "Compra",
     "quantScore": 39.1,
     "price": 75.17
+  },
+  {
+    "timestamp": "2026-08-24T19:17:33.933787+00:00",
+    "symbol": "BTC",
+    "signal": "Venta",
+    "quantScore": 63.8,
+    "price": 78911.99
+  },
+  {
+    "timestamp": "2026-08-24T19:17:41.473847+00:00",
+    "symbol": "ETH",
+    "signal": "Venta",
+    "quantScore": 72.6,
+    "price": 2470.61
+  },
+  {
+    "timestamp": "2026-08-24T19:17:47.250296+00:00",
+    "symbol": "SOL",
+    "signal": "Venta",
+    "quantScore": 63.4,
+    "price": 95.67
   }
 ]

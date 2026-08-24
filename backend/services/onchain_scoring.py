@@ -200,14 +200,30 @@ def score_onchain_v2(onchain: Dict) -> Dict:
             sub_scores["exchangeFlow"] = normalize_exchange_flow(flow_val)
             weights["exchangeFlow"] = 0.15
     
+    # DeFiLlama metrics (for altcoins without CoinMetrics deep data)
+    defillama_data = onchain.get("defillama")
+    if defillama_data and isinstance(defillama_data, dict):
+        from services.onchain_defillama import score_defillama_metrics
+        market_cap = 0
+        # Try to get market cap from various sources in the onchain data
+        mvrv_d = onchain.get("mvrv")
+        if mvrv_d and isinstance(mvrv_d, dict):
+            market_cap = mvrv_d.get("marketCap", 0) or 0
+        
+        dl_score = score_defillama_metrics(defillama_data, market_cap)
+        dl_total = dl_score.get("score", 50)
+        if dl_total != 50 or dl_score.get("dataDepth") != "minimal":
+            sub_scores["defillamaHealth"] = dl_total
+            weights["defillamaHealth"] = 0.25  # Significant weight for DeFi health
+    
     # If no metrics available at all, return neutral
     if not sub_scores:
         return {
             "total": 50.0,
             "score": 50.0,
             "subScores": {},
-            "dataDepth": "minimal",
-            "weight": 0.05,  # Very low weight when no real data
+            "dataDepth": data_depth,
+            "weight": 0.05,
         }
     
     # Normalize weights to sum to 1.0

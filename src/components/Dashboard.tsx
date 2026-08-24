@@ -24,9 +24,13 @@ const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 import BacktestBadge from './BacktestBadge';
 import { BacktestChart } from './charts/BacktestChart';
 import LiquidityPanel from './LiquidityPanel';
+import SupplyDynamicsPanel from './SupplyDynamicsPanel';
+import StablecoinDashboard from './StablecoinDashboard';
 import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2 } from 'lucide-react';
 import { wsManager } from '@/lib/websocket-manager';
 import { useAppStore } from '@/lib/store';
+
+const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
 
 export default function Dashboard() {
   const { symbol, setSymbol, mode, timeframe } = useAppSettings();
@@ -64,6 +68,21 @@ export default function Dashboard() {
           volume24h: pythonResult.volume24h,
           source: 'binance',
         });
+
+        try {
+          const supplyRes = await fetch(`${PYTHON_API_URL}/api/supply/${symbol}`);
+          if (supplyRes.ok) {
+            pythonResult.supplyDynamics = await supplyRes.json();
+          }
+        } catch (e) {}
+
+        try {
+          const stablecoinRes = await fetch(`${PYTHON_API_URL}/api/stablecoins/analysis`);
+          if (stablecoinRes.ok) {
+            pythonResult.stablecoinAnalysis = await stablecoinRes.json();
+          }
+        } catch (e) {}
+
         setData(pythonResult as MarketAnalysis);
         return;
       }
@@ -116,6 +135,20 @@ export default function Dashboard() {
         };
       }
     } catch {}
+
+    try {
+      const supplyRes = await fetch(`${PYTHON_API_URL}/api/supply/${symbol}`);
+      if (supplyRes.ok) {
+        analysis.supplyDynamics = await supplyRes.json();
+      }
+    } catch (e) {}
+
+    try {
+      const stablecoinRes = await fetch(`${PYTHON_API_URL}/api/stablecoins/analysis`);
+      if (stablecoinRes.ok) {
+        analysis.stablecoinAnalysis = await stablecoinRes.json();
+      }
+    } catch (e) {}
 
     setData(analysis);
   }, [symbol, mode, timeframe, selectedDexPair]);
@@ -481,6 +514,12 @@ export default function Dashboard() {
           Inteligencia On-Chain
         </h2>
         <OnChainDashboard symbol={data.symbol} onSymbolChange={setSymbol} />
+      </div>
+
+      {/* New Panels: Supply Dynamics & Stablecoins */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <SupplyDynamicsPanel supplyData={data.supplyDynamics} />
+        <StablecoinDashboard stablecoinData={data.stablecoinAnalysis} />
       </div>
     </div>
   );

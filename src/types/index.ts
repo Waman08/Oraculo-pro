@@ -202,6 +202,44 @@ export interface LiquidityData {
   liquidityScore: number;
 }
 
+export interface SupplyData {
+  symbol: string;
+  price: number;
+  marketCap: number;
+  fdv: number;
+  circulatingSupply: number;
+  totalSupply: number;
+  maxSupply: number | null;
+  circulatingRatio: number;
+  maxSupplyRatio: number | null;
+  fdvMcapRatio: number;
+  pendingInflationPct: number;
+  dilutionRisk: 'critical' | 'high' | 'medium' | 'low' | 'none';
+  dilutionLabel: string;
+  source: string;
+}
+
+export interface StablecoinAnalysis {
+  overview: {
+    totalMcap: number;
+    top: Array<{ name: string; symbol: string; mcap: number; dominance: number }>;
+  };
+  ssr?: {
+    ssr: number;
+    btcMarketCap: number;
+    stablecoinMarketCap: number;
+    signal: string;
+    score: number;
+  };
+  flows?: {
+    usdt?: { current: number; change7d: number; change7dPct: number };
+    usdc?: { current: number; change7d: number; change7dPct: number };
+  };
+  flowSignal?: string;
+  flowScore?: number;
+  topChains: Array<{ chain: string; totalUSD: number }>;
+}
+
 export interface MarketAnalysis {
   symbol: string;
   name: string;
@@ -219,6 +257,8 @@ export interface MarketAnalysis {
   onChain: OnChainData;
   smartMoney: SmartMoneyData;
   liquidity?: LiquidityData;
+  supplyDynamics?: SupplyData;
+  stablecoinAnalysis?: StablecoinAnalysis;
   macro: MacroData;
   actionableData: ActionableData;
   actuarial?: ActuarialData;

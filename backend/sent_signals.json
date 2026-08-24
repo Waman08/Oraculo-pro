@@ -1,5 +1,5 @@
 {
-  "BTC": "Mantener",
-  "ETH": "Compra",
-  "SOL": "Compra"
+  "BTC": "Venta",
+  "ETH": "Venta",
+  "SOL": "Venta"
 }
