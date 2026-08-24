@@ -48,7 +48,11 @@ export default function Dashboard() {
 
   const breakdown = useMemo(() => {
     if (!data) return null;
-    return calculateFullScore(data.indicators, data.sentiment, data.onChain, data.currentPrice, mode);
+    if (data.scoreBreakdown) return data.scoreBreakdown;
+    
+    // Fallback for purely JS-generated data
+    // Cast onChain to any because Python structure differs from JS structure
+    return calculateFullScore(data.indicators, data.sentiment, data.onChain as any, data.currentPrice, mode);
   }, [data, mode]);
 
   // Fetch real price + Fear & Greed and generate analysis (REST Fallback)

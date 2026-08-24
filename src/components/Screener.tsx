@@ -321,11 +321,11 @@ export default function Screener() {
                       <span
                         className="text-xs font-semibold flex items-center justify-end gap-0.5"
                         style={{
-                          color: entry.priceChange24h >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
+                          color: (entry.priceChange24h || 0) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
                         }}
                       >
-                        {entry.priceChange24h >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                        {entry.priceChange24h >= 0 ? '+' : ''}{entry.priceChange24h.toFixed(1)}%
+                        {(entry.priceChange24h || 0) >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                        {(entry.priceChange24h || 0) >= 0 ? '+' : ''}{typeof entry.priceChange24h === 'number' ? entry.priceChange24h.toFixed(1) : '0.0'}%
                       </span>
                     </div>
 
@@ -334,17 +334,17 @@ export default function Screener() {
                       <span
                         className="text-xs font-bold"
                         style={{
-                          color: entry.rsi < 30 ? 'var(--signal-buy)' : entry.rsi > 70 ? 'var(--signal-sell)' : 'var(--text-secondary)',
+                          color: (entry.rsi || 50) < 30 ? 'var(--signal-buy)' : (entry.rsi || 50) > 70 ? 'var(--signal-sell)' : 'var(--text-secondary)',
                         }}
                       >
-                        {entry.rsi.toFixed(1)}
+                        {typeof entry.rsi === 'number' ? entry.rsi.toFixed(1) : '50.0'}
                       </span>
                     </div>
 
                     {/* Score */}
                     <div className="text-right">
                       <div className="font-mono font-bold text-base" style={{ color: getScoreColor(entry.quantScore) }}>
-                        {entry.quantScore.toFixed(1)}
+                        {typeof entry.quantScore === 'number' ? entry.quantScore.toFixed(1) : '50.0'}
                       </div>
                     </div>
 

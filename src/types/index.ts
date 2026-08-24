@@ -269,6 +269,8 @@ export interface MarketAnalysis {
     volume_anomaly?: { anomaly: boolean; score?: number; description?: string; ratio?: number };
     nlp_sentiment?: any;
   };
+  scoreBreakdown?: ScoreBreakdown;
+  source?: string;
   timestamp: string;
 }
 
