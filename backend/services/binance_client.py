@@ -38,7 +38,7 @@ CRYPTO_NAMES: Dict[str, str] = {
     "RUNE": "THORChain", "DYDX": "dYdX", "SNX": "Synthetix",
 }
 
-BASE_URL = "https://api.binance.com/api/v3"
+BASE_URL = "https://data-api.binance.vision/api/v3"
 
 async def init_binance_symbols():
     """
