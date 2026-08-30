@@ -173,7 +173,7 @@ body {
 }
 
 .shimmer-bg {
-  background: linear-gradient(90deg, transparent 25%, var(--accent-gold-dim) 50%, transparent 75%);
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--accent-gold-dim) 50%, var(--bg-tertiary) 75%);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }

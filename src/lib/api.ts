@@ -376,7 +376,7 @@ export async function fetchPythonAnalysis(
 ): Promise<any | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout for complex analysis
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for Render wake up
 
     // Obtener UUID del usuario para personalización anónima
     const userId = typeof window !== 'undefined' ? localStorage.getItem('user_uuid') : null;
@@ -413,7 +413,7 @@ export async function fetchPythonScreener(
 ): Promise<any[] | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s for screener (many symbols)
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const userId = typeof window !== 'undefined' ? localStorage.getItem('user_uuid') : null;
     const headers: Record<string, string> = {};
@@ -514,7 +514,7 @@ export async function fetchBacktestFromServer(
 ): Promise<any | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const res = await fetch(
       `${PYTHON_API_URL}/api/backtest?symbol=${symbol.toUpperCase()}&timeframe=${timeframe}&limit=${limit}`,

@@ -274,9 +274,21 @@ export default function Dashboard() {
 
   if (!data || !breakdown) {
     return (
-      <div className="flex flex-col gap-6 w-full animate-fadeInUp">
+      <div className="flex flex-col gap-6 w-full animate-fadeInUp min-h-[60vh] justify-center items-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-16 h-16 rounded-full shimmer-bg flex items-center justify-center opacity-80 border border-[var(--accent-gold)]">
+            <span className="text-2xl animate-pulse">🧠</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: 'var(--accent-gold)' }}>Conectando con el Motor de IA...</h2>
+            <p className="text-sm mt-2 max-w-md" style={{ color: 'var(--text-muted)' }}>
+              El servidor gratuito de Python puede tardar hasta 50 segundos en despertar si estaba inactivo. Por favor, espera...
+            </p>
+          </div>
+        </div>
+        
         {/* Search Bar Skeleton */}
-        <div className="flex justify-center">
+        <div className="flex justify-center w-full mt-8">
           <div className="w-full max-w-md h-12 rounded-xl shimmer-bg opacity-50" />
         </div>
         
