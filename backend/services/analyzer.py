@@ -82,7 +82,13 @@ def _smart_round(price: float) -> float:
         return round(price, 8)
 
 
-def score_momentum(indicators: Dict) -> float:
+def get_signal_label(val: float, low: float, high: float, low_is_buy: bool = True) -> str:
+    if low_is_buy:
+        return "Buy" if val <= low else "Sell" if val >= high else "Neutral"
+    else:
+        return "Buy" if val >= high else "Sell" if val <= low else "Neutral"
+
+def score_momentum(indicators: Dict):
     rsi = _safe_val(indicators.get("rsi"), 50.0)
     stoch_data = indicators.get("stochastic", {})
     stoch = (_safe_val(stoch_data.get("k"), 50.0) + _safe_val(stoch_data.get("d"), 50.0)) / 2
@@ -90,12 +96,16 @@ def score_momentum(indicators: Dict) -> float:
     macd_score = 30 if macd_hist > 0 else (70 if macd_hist < 0 else 50)
     
     total = rsi * 0.50 + stoch * 0.30 + macd_score * 0.20
-    return max(0, min(100, total))
+    score = max(0, min(100, total))
+    
+    details = [
+        {"name": "RSI (14)", "value": f"{rsi:.1f}", "signal": get_signal_label(rsi, 30, 70)},
+        {"name": "Stochastic", "value": f"{stoch:.1f}", "signal": get_signal_label(stoch, 20, 80)},
+        {"name": "MACD Hist", "value": f"{macd_hist:.2f}", "signal": "Buy" if macd_hist > 0 else "Sell"}
+    ]
+    return score, details
 
-
-def score_trend(indicators: Dict, price: float) -> float:
-    # EMA Stack: above EMAs = strong uptrend = high score (overbought territory)
-    # Scoring convention: low = buy opportunity, high = sell territory
+def score_trend(indicators: Dict, price: float):
     ema20 = _safe_val(indicators.get("ema20"), price)
     ema50 = _safe_val(indicators.get("ema50"), price)
     ema200 = _safe_val(indicators.get("ema200"), price)
@@ -105,38 +115,31 @@ def score_trend(indicators: Dict, price: float) -> float:
         1 if price > ema50 else 0,
         1 if price > ema200 else 0,
     ])
-    # 0 EMAs above = 0 (very bearish/oversold), 3 above = 100 (very bullish/overbought)
     ema_score = (ema_count / 3) * 100
 
     adx = _safe_val(indicators.get("adx"), 25.0)
     st_dir = indicators.get("supertrend", {}).get("direction", "up")
 
-    # ADX + Supertrend combined:
-    # - Up trend with strong ADX → high score (overbought)
-    # - Down trend with strong ADX → low score (oversold/buy opportunity)
-    if adx > 25:
-        adx_score = 70 if st_dir == "up" else 30
-    else:
-        adx_score = 50  # Weak trend, neutral
+    total = ema_score * 0.50 + adx * 0.25 + (100 if st_dir == "up" else 0) * 0.25
+    score = max(0, min(100, total))
+    
+    details = [
+        {"name": "EMAs (20,50,200)", "value": f"{ema_count}/3", "signal": "Buy" if ema_count >= 2 else "Sell" if ema_count <= 1 else "Neutral"},
+        {"name": "ADX", "value": f"{adx:.1f}", "signal": "Neutral" if adx < 25 else "Buy" if st_dir == "up" else "Sell"},
+        {"name": "SuperTrend", "value": st_dir.upper(), "signal": "Buy" if st_dir == "up" else "Sell"}
+    ]
+    return score, details
 
-    st_score = 70 if st_dir == "up" else 30
-
-    ichi = indicators.get("ichimoku", {})
-    senkou_a = _safe_val(ichi.get("senkouA"), price)
-    senkou_b = _safe_val(ichi.get("senkouB"), price)
-    above_cloud = price > max(senkou_a, senkou_b)
-    below_cloud = price < min(senkou_a, senkou_b)
-    ichi_score = 75 if above_cloud else (25 if below_cloud else 50)
-
-    total = ema_score * 0.35 + adx_score * 0.25 + st_score * 0.20 + ichi_score * 0.20
-    return max(0, min(100, total))
-
-
-def score_sentiment(sentiment: Dict) -> float:
+def score_sentiment(sentiment: Dict):
     fg = _safe_val(sentiment.get("fearGreedIndex"), 50.0)
     alt = _safe_val(sentiment.get("altcoinSeasonIndex"), 50.0)
-    return max(0, min(100, fg * 0.70 + alt * 0.30))
-
+    score = max(0, min(100, fg * 0.70 + alt * 0.30))
+    
+    details = [
+        {"name": "Fear & Greed", "value": f"{fg:.1f}", "signal": get_signal_label(fg, 30, 70)},
+        {"name": "Altcoin Season", "value": f"{alt:.1f}%", "signal": get_signal_label(alt, 25, 75)}
+    ]
+    return score, details
 
 def calculate_full_score(
     indicators: Dict,
@@ -148,16 +151,15 @@ def calculate_full_score(
 ) -> Dict:
     w = MODE_WEIGHTS.get(mode, MODE_WEIGHTS["Balanceado"]).copy()
     
-    mom = score_momentum(indicators)
-    trend = score_trend(indicators, price)
-    sent = score_sentiment(sentiment)
+    mom_score, mom_details = score_momentum(indicators)
+    trend_score, trend_details = score_trend(indicators, price)
+    sent_score, sent_details = score_sentiment(sentiment)
     
     # OnChain v2 scoring — uses .get() to prevent KeyError crash
-    oc_result = score_onchain_v2(onchain)
-    oc = oc_result.get("score", oc_result.get("total", 50.0))
+    oc_result = score_supply_dynamics(onchain.get("metrics", {}))
+    oc_score = oc_result["score"]
     
-    if oc_result["weight"] < w["onChain"]:
-        # Reduce onchain weight and distribute to momentum and trend
+    if not oc_result["available"]:
         diff = w["onChain"] - oc_result["weight"]
         w["onChain"] = oc_result["weight"]
         w["momentum"] += diff * 0.5
@@ -165,14 +167,14 @@ def calculate_full_score(
 
     liq = liquidity.get("liquidityScore", 50)
     
-    total = mom * w["momentum"] + trend * w["trend"] + sent * w["sentiment"] + oc * w["onChain"] + liq * w["liquidity"]
+    total = mom_score * w["momentum"] + trend_score * w["trend"] + sent_score * w["sentiment"] + oc_score * w["onChain"] + liq * w["liquidity"]
 
     return {
-        "momentum": {"score": round(mom, 1), "weight": round(w["momentum"], 2)},
-        "trend": {"score": round(trend, 1), "weight": round(w["trend"], 2)},
-        "sentiment": {"score": round(sent, 1), "weight": round(w["sentiment"], 2)},
-        "onChain": {"score": round(oc, 1), "weight": round(w["onChain"], 2)},
-        "liquidity": {"score": round(liq, 1), "weight": round(w["liquidity"], 2)},
+        "momentum": {"score": round(mom_score, 1), "weight": round(w["momentum"], 2), "details": mom_details},
+        "trend": {"score": round(trend_score, 1), "weight": round(w["trend"], 2), "details": trend_details},
+        "sentiment": {"score": round(sent_score, 1), "weight": round(w["sentiment"], 2), "details": sent_details},
+        "onChain": {"score": round(oc_score, 1), "weight": round(w["onChain"], 2), "details": oc_result.get("details", [])},
+        "liquidity": {"score": round(liq, 1), "weight": round(w["liquidity"], 2), "details": [{"name": "Liquidity", "value": f"{liq:.1f}", "signal": "Neutral"}]},
         "total": round(total, 1),
     }
 
