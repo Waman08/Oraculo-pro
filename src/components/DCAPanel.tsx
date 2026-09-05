@@ -11,7 +11,8 @@ interface DCAPanelProps {
 
 export default function DCAPanel({ actionableData, currentPrice }: DCAPanelProps) {
   const { t } = useLocale();
-  const { dcaLevels, optimalEntry, takeProfit, stopLoss, riskLevel } = actionableData;
+  if (!actionableData) return null;
+  const { dcaLevels = [], optimalEntry, takeProfit, stopLoss, riskLevel } = actionableData;
   const isBuying = dcaLevels.length > 0 && dcaLevels[0].type === 'compra';
 
   return (

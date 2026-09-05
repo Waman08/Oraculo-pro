@@ -32,6 +32,8 @@ const CATEGORY_COLORS = {
 export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
   const { t } = useLocale();
 
+  if (!breakdown) return null;
+
   const categories = [
     { key: 'momentum' as const, data: breakdown.momentum },
     { key: 'trend' as const, data: breakdown.trend },

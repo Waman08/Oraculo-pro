@@ -11,6 +11,7 @@ interface SentimentPanelProps {
 
 export default function SentimentPanel({ sentiment, macro }: SentimentPanelProps) {
   const { t } = useLocale();
+  if (!sentiment || !macro) return null;
 
   return (
     <div className="glass-card p-5 animate-fadeInUp">

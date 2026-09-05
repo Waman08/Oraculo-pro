@@ -12,6 +12,10 @@ interface SmartMoneyPanelProps {
 export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoneyPanelProps) {
   const { t } = useLocale();
 
+  if (!smartMoney) {
+    return null;
+  }
+
   const pocDiff = ((currentPrice - smartMoney.volumeProfilePOC) / smartMoney.volumeProfilePOC) * 100;
   const isAbovePoc = currentPrice > smartMoney.volumeProfilePOC;
 

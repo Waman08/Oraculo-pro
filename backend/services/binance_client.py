@@ -79,6 +79,10 @@ async def fetch_klines(
     Fetch OHLCV klines from Binance and return as a DataFrame.
     Returns None if the symbol is not supported or the request fails.
     """
+    global BINANCE_PAIR_MAP
+    if not BINANCE_PAIR_MAP:
+        await init_binance_symbols()
+
     pair = BINANCE_PAIR_MAP.get(symbol.upper())
     if not pair:
         return None
@@ -170,6 +174,10 @@ async def fetch_ticker(symbol: str) -> Optional[Dict]:
     Returns dict with price, priceChange24h, volume24h or None.
     Attempts Binance first, then falls back to DexScreener.
     """
+    global BINANCE_PAIR_MAP
+    if not BINANCE_PAIR_MAP:
+        await init_binance_symbols()
+
     symbol_upper = symbol.upper()
     pair = BINANCE_PAIR_MAP.get(symbol_upper)
     if pair:
