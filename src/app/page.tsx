@@ -2,6 +2,7 @@
 
 import Dashboard from '@/components/Dashboard';
 import Screener from '@/components/Screener';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { AppProvider, useAppSettings, useLocale, useTheme } from '@/components/AppContext';
 import type { RiskMode, Timeframe } from '@/types';
 import { Sun, Moon, Globe, Settings2, Cloud, HardDrive } from 'lucide-react';
@@ -146,9 +147,11 @@ function AppContent() {
         </div>
 
         {/* Content */}
-        <div key={activeTab} className="animate-fadeInUp">
-          {activeTab === 'analysis' ? <Dashboard /> : <Screener />}
-        </div>
+        <ErrorBoundary>
+          <div key={activeTab} className="animate-fadeInUp">
+            {activeTab === 'analysis' ? <Dashboard /> : <Screener />}
+          </div>
+        </ErrorBoundary>
 
         {/* Footer */}
         <footer className="text-center mt-12 mb-6 text-xs" style={{ color: 'var(--text-muted)' }}>
