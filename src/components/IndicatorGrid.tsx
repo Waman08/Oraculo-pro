@@ -91,7 +91,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
 
               {/* Individual indicators */}
               <div className="space-y-2">
-                {data.details.map((ind, idx) => (
+                {data.details?.map((ind, idx) => (
                   <div key={idx} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       <div
