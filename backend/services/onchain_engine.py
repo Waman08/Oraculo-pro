@@ -66,6 +66,13 @@ async def get_full_onchain(symbol: str) -> dict:
     except Exception as e:
         print(f"[OnChainEngine] DeFi TVL fetch error: {e}")
 
+    try:
+        defillama_data = await get_full_defillama_metrics(symbol)
+        if defillama_data and defillama_data.get('metricsAvailable', 0) > 0:
+            result["metrics"]["defillama"] = defillama_data
+    except Exception as e:
+        print(f"[OnChainEngine] DefiLlama fetch error: {e}")
+
     result["dataDepth"] = "standard"
     _onchain_full_cache[cache_key] = {"timestamp": current_time, "data": result}
     return result

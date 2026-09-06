@@ -31,7 +31,7 @@ const CATEGORIES = [
   { id: 'supply', label: 'Supply Dynamics', icon: Box },
   
   
-  { id: 'indicators', label: 'Indicators', icon: TrendingUp },
+  { id: 'protocol', label: 'DeFi & Protocol', icon: TrendingUp },
   { id: 'signals', label: 'Signals Index', icon: BellRing },
   { id: 'stablecoins', label: 'Stablecoins', icon: CircleDollarSign },
 ];
@@ -196,16 +196,16 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                         <div className="indicator-card p-4">
                           <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-2">Total Stablecoin Market Cap</div>
                           <div className="text-3xl font-black text-[var(--signal-buy)]">
-                            ${(data.stablecoinMarket.totalMarketCap / 1e9).toFixed(1)}B
+                            ${(data.stablecoinMarket.totalMcap / 1e9).toFixed(1)}B
                           </div>
                         </div>
                         <div className="indicator-card p-4">
                           <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-2">Top Stablecoin Dominance</div>
                           <div className="space-y-2 mt-4">
-                            {data.stablecoinMarket.peggedAssets?.slice(0, 3).map((asset: any) => (
+                            {data.stablecoinMarket.top?.slice(0, 3).map((asset: any) => (
                               <div key={asset.symbol} className="flex justify-between items-center text-sm">
                                 <span className="font-bold">{asset.symbol}</span>
-                                <span className="text-[var(--text-secondary)]">${(asset.circulating / 1e9).toFixed(1)}B</span>
+                                <span className="text-[var(--text-secondary)]">${(asset.mcap / 1e9).toFixed(1)}B</span>
                               </div>
                             ))}
                           </div>
@@ -218,8 +218,50 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
                 </div>
               )}
 
+              {/* PROTOCOL & DEFI */}
+              {activeCategory === 'protocol' && (
+                <div className="space-y-6">
+                  <div className="glass-card p-6">
+                    <h3 className="text-xl font-bold text-[var(--text-primary)] mb-6">DeFi & Protocol Metrics</h3>
+                    {data.metrics?.defillama && data.metrics.defillama.metricsAvailable > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {data.metrics.defillama.tvl && (
+                          <div className="indicator-card p-4">
+                            <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-2">Total Value Locked (TVL)</div>
+                            <div className="text-3xl font-black text-[var(--signal-buy)]">
+                              ${(data.metrics.defillama.tvl.tvl / 1e9).toFixed(2)}B
+                            </div>
+                          </div>
+                        )}
+                        {data.metrics.defillama.dexVolume && (
+                          <div className="indicator-card p-4">
+                            <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-2">DEX Volume (24h)</div>
+                            <div className="text-3xl font-black text-[var(--text-primary)]">
+                              ${(data.metrics.defillama.dexVolume.dexVolume24h / 1e6).toFixed(2)}M
+                            </div>
+                            <div className={`text-sm mt-2 font-bold ${data.metrics.defillama.dexVolume.change24h > 0 ? 'text-[var(--signal-buy)]' : 'text-[var(--signal-sell)]'}`}>
+                              {data.metrics.defillama.dexVolume.change24h > 0 ? '+' : ''}{data.metrics.defillama.dexVolume.change24h.toFixed(2)}%
+                            </div>
+                          </div>
+                        )}
+                        {data.metrics.defillama.fees && (
+                          <div className="indicator-card p-4">
+                            <div className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-2">Fees Generated (24h)</div>
+                            <div className="text-3xl font-black text-[var(--text-primary)]">
+                              ${(data.metrics.defillama.fees.fees24h / 1e3).toFixed(1)}k
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-[var(--text-muted)]">DeFi metrics not available for this network.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Coming Soon Fallback for others */}
-              {activeCategory !== 'signals' && activeCategory !== 'fundamentals' && activeCategory !== 'supply' && activeCategory !== 'stablecoins' && (
+              {activeCategory !== 'signals' && activeCategory !== 'fundamentals' && activeCategory !== 'supply' && activeCategory !== 'stablecoins' && activeCategory !== 'protocol' && (
                 <div className="glass-card w-full min-h-[400px] flex flex-col items-center justify-center text-center p-8">
                   <Box size={48} className="mb-4 text-[var(--text-muted)] opacity-50" />
                   <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">No Disponible</h2>
@@ -234,3 +276,4 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
     </div>
   );
 }
+

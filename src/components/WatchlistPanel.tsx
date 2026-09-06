@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAppSettings, useLocale } from './AppContext';
 import { fetchAllBinancePrices } from '@/lib/api';
-import { generateFullAnalysis, calculateFullScore } from '@/lib/ml-engine';
+import { fetchPythonScreener } from '@/lib/api';
 import { TrendingUp, TrendingDown, Trash2, Search, Plus } from 'lucide-react';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
 
@@ -28,25 +28,33 @@ export default function WatchlistPanel() {
 
     async function loadWatchlist() {
       setLoading(true);
-      const prices = await fetchAllBinancePrices();
-      
-      const entries: WatchlistEntry[] = watchlist.map(sym => {
-        const p = prices.get(sym);
-        const analysis = generateFullAnalysis(sym, timeframe, mode, p?.price, p?.priceChange24h, p?.volume24h);
-        const breakdown = calculateFullScore(analysis.indicators, analysis.sentiment, analysis.onChain, analysis.currentPrice, mode);
+      try {
+        const [prices, screenerData] = await Promise.all([
+          fetchAllBinancePrices(),
+          fetchPythonScreener(timeframe, mode)
+        ]);
+        
+        const screenerMap = new Map((screenerData || []).map((s: any) => [s.symbol, s]));
+        
+        const entries: WatchlistEntry[] = watchlist.map(sym => {
+          const p = prices.get(sym);
+          const screenerInfo = screenerMap.get(sym);
+          
+          return {
+            symbol: sym,
+            price: p?.price || 0,
+            change: p?.priceChange24h || 0,
+            score: screenerInfo?.score || 50,
+            signal: screenerInfo?.signal || 'Mantener'
+          };
+        });
 
-        return {
-          symbol: sym,
-          price: analysis.currentPrice,
-          change: analysis.priceChange24h,
-          score: breakdown.total,
-          signal: analysis.signal
-        };
-      });
-
-      if (active) {
-        setData(entries);
-        setLoading(false);
+        if (active) {
+          setData(entries);
+          setLoading(false);
+        }
+      } catch (e) {
+        if (active) setLoading(false);
       }
     }
 
@@ -189,3 +197,4 @@ function getSignalLabel(signal: string) {
   if (signal === 'Venta Fuerte') return 'STR SELL';
   return signal;
 }
+
