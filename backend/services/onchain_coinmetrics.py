@@ -39,8 +39,12 @@ async def fetch_coinmetrics_metrics(asset: str, metrics: list[str], days: int = 
         "limit_per_asset": days
     }
     
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+    
     try:
-        async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
+        async with httpx.AsyncClient(timeout=15.0, verify=False, headers=headers) as client:
             response = await client.get(url, params=params)
             if response.status_code == 200:
                 data = response.json().get("data", [])

@@ -189,18 +189,26 @@ class ActuarialEngine:
             
             return {
                 "riskMetrics": {
-                    "var95": var_data["var_pct"],
-                    "cvar95": var_data["cvar_pct"],
-                    "annualVolatility": mc_data["sigma_annualized"]
+                    "var95": float(var_data["var_pct"]),
+                    "cvar95": float(var_data["cvar_pct"]),
+                    "annualVolatility": float(mc_data["sigma_annualized"])
                 },
                 "monteCarlo7D": {
-                    "p10": mc_data["p10"], # Bear case
-                    "p50": mc_data["p50"], # Base case
-                    "p90": mc_data["p90"],  # Bull case
-                    "paths": mc_data.get("paths", {}),
-                    "jump_params": mc_data.get("jump_params", {})
+                    "p10": float(mc_data["p10"]), 
+                    "p50": float(mc_data["p50"]), 
+                    "p90": float(mc_data["p90"]),  
+                    "paths": {
+                        "p10": [float(x) for x in mc_data.get("paths", {}).get("p10", [])],
+                        "p50": [float(x) for x in mc_data.get("paths", {}).get("p50", [])],
+                        "p90": [float(x) for x in mc_data.get("paths", {}).get("p90", [])]
+                    },
+                    "jump_params": {
+                        k: float(v) for k, v in mc_data.get("jump_params", {}).items()
+                    }
                 },
-                "markovRegime": markov_data,
+                "markovRegime": {
+                    k: float(v) for k, v in markov_data.items()
+                },
                 "dataAvailable": True
             }
         except Exception as e:

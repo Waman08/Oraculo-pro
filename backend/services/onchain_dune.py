@@ -1,6 +1,10 @@
 import os
-import httpx
 import time
+import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from .env.local if present
+load_dotenv(os.path.join(os.path.dirname(__file__), '../../.env.local'))
 
 _dune_cache = {}
 DUNE_CACHE_TTL = 3600

@@ -98,10 +98,12 @@ def score_momentum(indicators: Dict):
     total = rsi * 0.50 + stoch * 0.30 + macd_score * 0.20
     score = max(0, min(100, total))
     
+    macd_val_str = f"{macd_hist/1000:.1f}k" if abs(macd_hist) >= 1000 else f"{macd_hist:.2f}"
+    
     details = [
         {"name": "RSI (14)", "value": f"{rsi:.1f}", "signal": get_signal_label(rsi, 30, 70)},
         {"name": "Stochastic", "value": f"{stoch:.1f}", "signal": get_signal_label(stoch, 20, 80)},
-        {"name": "MACD Hist", "value": f"{macd_hist:.2f}", "signal": "Buy" if macd_hist > 0 else "Sell"}
+        {"name": "MACD Hist", "value": macd_val_str, "signal": "Buy" if macd_hist > 0 else "Sell"}
     ]
     return score, details
 
@@ -155,11 +157,11 @@ def calculate_full_score(
     trend_score, trend_details = score_trend(indicators, price)
     sent_score, sent_details = score_sentiment(sentiment)
     
-    # OnChain v2 scoring — uses .get() to prevent KeyError crash
-    oc_result = score_supply_dynamics(onchain.get("metrics", {}))
-    oc_score = oc_result["score"]
+    # OnChain v2 scoring
+    oc_result = score_onchain_v2(onchain)
+    oc_score = oc_result.get("score", 50.0)
     
-    if not oc_result["available"]:
+    if not oc_result.get("available", True):
         diff = w["onChain"] - oc_result["weight"]
         w["onChain"] = oc_result["weight"]
         w["momentum"] += diff * 0.5
@@ -299,12 +301,10 @@ async def get_real_onchain(symbol: str) -> Dict:
     """Fetch real on-chain data from our new unified onchain engine."""
     try:
         data = await get_full_onchain(symbol)
-        
-        # We return the raw data directly to calculate_full_score
-        return data
-        
+        return data or {}
     except Exception as e:
         print(f"[OnChain] Error: {e}")
+        return {}
     
     return {
         "dataDepth": "minimal",
@@ -455,7 +455,7 @@ async def fetch_real_macro() -> Dict:
     dxy_trend = "N/A"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             # Yahoo Finance v8 API for DXY
             resp = await client.get(
                 "https://query1.finance.yahoo.com/v8/finance/chart/DX-Y.NYB",
