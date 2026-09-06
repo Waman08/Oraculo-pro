@@ -34,11 +34,16 @@ export default function AIPanel({ data }: { data: MarketAnalysis }) {
         </div>
         <div className="rounded-lg p-3" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>
           <div className="text-xs mb-1 flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
-            <Activity size={12} /> Volume Anomaly
+            <Activity size={12} /> Whale Volume Anomaly
           </div>
           <div className="text-lg font-bold" style={{ color: isAnomaly ? 'var(--signal-warning)' : 'var(--signal-buy)' }}>
             {isAnomaly ? 'DETECTED' : 'NORMAL'}
           </div>
+          {data.ml?.volume_anomaly?.description && (
+             <div className="text-[10px] mt-1 leading-tight" style={{ color: 'var(--text-muted)' }}>
+               {data.ml.volume_anomaly.description}
+             </div>
+          )}
         </div>
       </div>
 

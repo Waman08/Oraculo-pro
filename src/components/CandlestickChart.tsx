@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, Time } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, Time, LineStyle } from 'lightweight-charts';
 import { fetchKlines } from '@/lib/api';
 import { useAppSettings } from './AppContext';
 import { useAppStore } from '@/lib/store';
+import { ActionableData } from '@/types';
 
 interface CandlestickChartProps {
   symbol: string;
+  actionableData?: ActionableData;
 }
 
-export default function CandlestickChart({ symbol }: CandlestickChartProps) {
+export default function CandlestickChart({ symbol, actionableData }: CandlestickChartProps) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -69,6 +71,40 @@ export default function CandlestickChart({ symbol }: CandlestickChartProps) {
     });
     seriesRef.current = candlestickSeries;
 
+    // Draw Support/Resistance Lines
+    if (actionableData) {
+      if (actionableData.optimalEntry) {
+        candlestickSeries.createPriceLine({
+          price: actionableData.optimalEntry,
+          color: '#3B82F6', // Blue for entry
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: 'Entry',
+        });
+      }
+      if (actionableData.takeProfit) {
+        candlestickSeries.createPriceLine({
+          price: actionableData.takeProfit,
+          color: '#10B981', // Green for TP
+          lineWidth: 2,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: 'TP',
+        });
+      }
+      if (actionableData.stopLoss) {
+        candlestickSeries.createPriceLine({
+          price: actionableData.stopLoss,
+          color: '#EF4444', // Red for SL
+          lineWidth: 2,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
+          title: 'SL',
+        });
+      }
+    }
+
     // Add Volume Series
     const volumeSeries = (chart as any).addHistogramSeries({
       color: '#26a69a',
@@ -124,7 +160,7 @@ export default function CandlestickChart({ symbol }: CandlestickChartProps) {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, actionableData]);
 
   return (
     <div className="w-full h-full relative min-h-[280px] h-[350px] glass-card overflow-hidden">
@@ -135,16 +171,25 @@ export default function CandlestickChart({ symbol }: CandlestickChartProps) {
       )}
       {!loading && (!seriesRef.current || chartContainerRef.current?.childNodes.length === 0) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10 backdrop-blur-sm text-[#94A3B8]">
-          <div className="text-4xl mb-2">📊</div>
+          <div className="text-4xl mb-2">📉</div>
           <div className="text-sm font-semibold">Datos del gráfico no disponibles</div>
           <div className="text-xs opacity-60">No se pudieron cargar velas de este activo</div>
         </div>
       )}
-      <div className="absolute top-4 left-4 z-10 flex items-center gap-3">
-         <div className="font-bold text-lg">{symbol}</div>
-         <div className="text-sm text-gray-400 bg-black/40 px-2 py-1 rounded">{timeframe}</div>
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
+         <div className="flex items-center gap-3">
+           <div className="font-bold text-lg">{symbol}</div>
+           <div className="text-sm text-gray-400 bg-black/40 px-2 py-1 rounded">{timeframe}</div>
+         </div>
+         {actionableData && (
+           <div className="flex items-center gap-2 text-[10px] mt-1 opacity-70">
+             <span style={{ color: '#3B82F6' }}>Entry: ${actionableData.optimalEntry}</span>
+             <span style={{ color: '#10B981' }}>TP: ${actionableData.takeProfit}</span>
+             <span style={{ color: '#EF4444' }}>SL: ${actionableData.stopLoss}</span>
+           </div>
+         )}
       </div>
-      <div className="absolute inset-0 pt-14 pb-4 px-4">
+      <div className="absolute inset-0 pt-16 pb-4 px-4">
         <div ref={chartContainerRef} className="w-full h-full" />
       </div>
     </div>
