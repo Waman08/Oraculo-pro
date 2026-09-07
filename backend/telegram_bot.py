@@ -1284,10 +1284,23 @@ async def poll_telegram_updates(sender: TelegramSender, config: dict):
                 message = update.get("message", {})
                 text = message.get("text", "")
                 chat_id = str(message.get("chat", {}).get("id", ""))
+                username = message.get("chat", {}).get("username", "")
 
-                # Only respond to the configured chat_id
-                if chat_id == config["CHAT_ID"] and text.startswith("/"):
-                    print(f"  [CMD] Received command: {text}")
+                if text.startswith("/"):
+                    print(f"  [CMD] Received command: {text} from @{username}")
+                    
+                    # Save user dynamically if they have a username
+                    if username:
+                        from pathlib import Path
+                        users_path = Path(__file__).parent / "telegram_users.json"
+                        try:
+                            users = json.loads(users_path.read_text(encoding="utf-8")) if users_path.exists() else {}
+                            users[username.lower()] = chat_id
+                            users_path.write_text(json.dumps(users, indent=2))
+                        except Exception as e:
+                            print(f"[BOT] Could not save user {username}: {e}")
+
+                    # Handle command
                     await handle_command(sender, text, chat_id)
 
     except Exception as e:
@@ -1344,6 +1357,10 @@ async def check_price_alerts(sender: TelegramSender):
         except Exception as e:
             print(f"  [WARN] Error fetching price for {sym}: {e}")
 
+    # Load users dict to route messages dynamically
+    users_path = Path(__file__).parent / "telegram_users.json"
+    users = json.loads(users_path.read_text(encoding="utf-8")) if users_path.exists() else {}
+
     any_triggered = False
     for alert in alerts:
         if alert.get("triggered", False):
@@ -1352,6 +1369,7 @@ async def check_price_alerts(sender: TelegramSender):
         symbol = alert.get("symbol", "").upper()
         target_price = alert.get("targetPrice", 0)
         condition = alert.get("condition", "above")
+        alert_username = alert.get("telegramUsername", "")
 
         current_price = price_cache.get(symbol)
         if current_price is None:
@@ -1365,12 +1383,29 @@ async def check_price_alerts(sender: TelegramSender):
 
         if is_triggered and alert_id not in triggered_price_alerts:
             msg = format_price_alert_message(alert, current_price)
+            
+            # Route to dynamic user if specified, else use default sender
+            original_chat_id = sender.chat_id
+            target_chat_id = original_chat_id
+            if alert_username:
+                clean_username = alert_username.replace("@", "").lower()
+                if clean_username in users:
+                    target_chat_id = users[clean_username]
+                else:
+                    print(f"  [WARN] Could not find chat_id for telegramUsername: @{clean_username}")
+                    # Skip sending if we can't find the targeted user
+                    continue
+
+            # Override chat_id and send
+            sender.chat_id = target_chat_id
             success = await sender.send_message(msg, parse_mode="HTML")
+            sender.chat_id = original_chat_id # restore
+
             if success:
                 triggered_price_alerts.add(alert_id)
                 alert["triggered"] = True
                 any_triggered = True
-                print(f"  [ALERT] Price alert triggered: {symbol} {condition} ${target_price:,.2f} (current: ${current_price:,.2f})")
+                print(f"  [ALERT] Price alert sent to {target_chat_id} for {symbol} {condition} ${target_price:,.2f}")
 
     if any_triggered:
         save_price_alerts(alerts)
@@ -1678,3 +1713,12 @@ if __name__ == "__main__":
         asyncio.run(start_bot_loop())
     except KeyboardInterrupt:
         print("\n[BYE] Bot detenido.")
+def load_telegram_users():
+    path = Path(__file__).parent / 'telegram_users.json'
+    return load_json_file(path, {})
+
+def save_telegram_user(username: str, chat_id: str):
+    path = Path(__file__).parent / 'telegram_users.json'
+    users = load_telegram_users()
+    users[username.replace('@', '').lower()] = str(chat_id)
+    save_json_file(path, users)

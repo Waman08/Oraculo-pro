@@ -20,6 +20,7 @@ interface PriceAlert {
   targetPrice: number;
   condition: 'above' | 'below';
   triggered: boolean;
+  telegramUsername?: string;
 }
 
 const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
@@ -386,48 +387,21 @@ export default function AlertsPanel() {
 
 function TelegramConfig({ botStatus }: { botStatus: string }) {
   const [showTg, setShowTg] = useState(false);
-  const [tgToken, setTgToken] = useState('');
-  const [tgChatId, setTgChatId] = useState('');
-  const [tgStatus, setTgStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
-
+  const [telegramUser, setTelegramUser] = useState('');
+  
   useEffect(() => {
-    const savedToken = localStorage.getItem('tg_bot_token');
-    const savedChat = localStorage.getItem('tg_chat_id');
-    if (savedToken) setTgToken(savedToken);
-    if (savedChat) setTgChatId(savedChat);
+    const savedUser = localStorage.getItem('tg_username');
+    if (savedUser) setTelegramUser(savedUser);
   }, []);
 
-  const handleTestTelegram = async () => {
-    if (!tgToken || !tgChatId) return;
-    setTgStatus('testing');
-
-    localStorage.setItem('tg_bot_token', tgToken);
-    localStorage.setItem('tg_chat_id', tgChatId);
-
-    try {
-      const res = await fetch(`${PYTHON_API_URL}/api/telegram/test`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bot_token: tgToken, chat_id: tgChatId }),
-      });
-
-      if (res.ok) {
-        await fetch(`${PYTHON_API_URL}/api/telegram/config`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bot_token: tgToken, chat_id: tgChatId }),
-        }).catch(() => {});
-
-        setTgStatus('success');
-      } else {
-        setTgStatus('error');
-      }
-    } catch {
-      setTgStatus('error');
-    }
-
-    setTimeout(() => setTgStatus('idle'), 3000);
+  const handleSaveUser = () => {
+    if (!telegramUser) return;
+    const cleanUser = telegramUser.startsWith('@') ? telegramUser : `@${telegramUser}`;
+    setTelegramUser(cleanUser);
+    localStorage.setItem('tg_username', cleanUser);
   };
+
+  const botUsername = "IndicadorCryptoBot";
 
   return (
     <div className="mt-5 pt-5 border-t border-white/10">
@@ -437,50 +411,38 @@ function TelegramConfig({ botStatus }: { botStatus: string }) {
       >
         <div className="flex items-center gap-2 text-xs font-bold text-white/70 group-hover:text-white transition-colors">
           <Settings size={14} className={botStatus === 'running' ? 'text-emerald-400' : 'text-white/40'} />
-          Configuración Telegram
+          Conexión con Telegram
         </div>
         <ChevronDown size={14} className={`text-white/40 transition-transform duration-300 ${showTg ? 'rotate-180' : ''}`} />
       </button>
 
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showTg ? 'max-h-96 opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
-        <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3">
-          <div>
-            <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Bot Token (@BotFather)</label>
-            <input
-              type="password"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white"
-              value={tgToken}
-              onChange={e => setTgToken(e.target.value)}
-              placeholder="123456:ABC-DEF..."
-            />
+        <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-4">
+          <div className="text-xs text-white/60 mb-2">
+            Ingresa tu usuario para que el bot sepa a quién enviarle las alertas.
           </div>
           <div>
-            <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Chat ID (@userinfobot)</label>
-            <input
-              type="text"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white"
-              value={tgChatId}
-              onChange={e => setTgChatId(e.target.value)}
-              placeholder="123456789"
+            <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Tu Usuario de Telegram</label>
+            <input 
+              type="text" 
+              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white placeholder-white/20"
+              value={telegramUser} 
+              onChange={e => setTelegramUser(e.target.value)}
+              onBlur={handleSaveUser}
+              placeholder="Ej: @juan123"
             />
           </div>
-          <button
-            onClick={handleTestTelegram}
-            disabled={tgStatus === 'testing' || !tgToken || !tgChatId}
-            className={`w-full text-xs py-2 rounded-lg font-bold transition-all border flex justify-center items-center gap-2
-              ${tgStatus === 'success' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-              : tgStatus === 'error' ? 'bg-red-500/20 text-red-400 border-red-500/30'
-              : 'bg-white/5 text-white/90 border-white/10 hover:bg-white/10'}`}
-            style={{ opacity: (!tgToken || !tgChatId) ? 0.5 : 1 }}
+          
+          <a 
+            href={`https://t.me/${botUsername}?start=vincular`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={handleSaveUser}
+            className="w-full text-xs py-2 rounded-lg font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-2"
           >
-            {tgStatus === 'testing' ? <><Activity size={12} className="animate-pulse" /> Probando Conexión...</>
-             : tgStatus === 'success' ? <><CheckCircle2 size={12} /> ¡Conectado y Guardado!</>
-             : tgStatus === 'error' ? <><AlertCircle size={12} /> Error de Credenciales</>
-             : <><Send size={12} /> Guardar y Activar Bot</>}
-          </button>
-          <p className="text-[9px] text-white/40 text-center mt-2 px-2 leading-relaxed">
-            Al guardar, las credenciales se encriptan localmente. El motor backend de Python detectará el cambio y despertará el bot automáticamente sin necesidad de reiniciar servidores.
-          </p>
+            <Send size={14} /> 
+            Conectar con Bot Oficial
+          </a>
         </div>
       </div>
     </div>
