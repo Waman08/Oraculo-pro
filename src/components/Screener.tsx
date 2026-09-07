@@ -6,6 +6,7 @@ import type { Timeframe, Signal, ScreenerEntry } from '@/types';
 import { useAppSettings, useLocale } from './AppContext';
 import { TrendingUp, TrendingDown, Filter, RefreshCw, Wifi, WifiOff, ArrowUp, ArrowDown } from 'lucide-react';
 
+const SECTOR_KEYS = ['all', 'Layer 1', 'Layer 2', 'AI & Big Data', 'DeFi', 'Memecoins', 'Gaming', 'RWA & Oracles', 'Otros'];
 const SIGNAL_FILTER_KEYS: (Signal | 'all')[] = ['all', 'Compra Fuerte', 'Compra', 'Mantener', 'Venta', 'Venta Fuerte'];
 
 const SIGNAL_I18N: Record<Signal | 'all', string> = {
@@ -21,6 +22,7 @@ export default function Screener() {
   const { timeframe, setTimeframe, mode } = useAppSettings();
   const { t } = useLocale();
   const [signalFilter, setSignalFilter] = useState<Signal | 'all'>('all');
+  const [sectorFilter, setSectorFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'score' | 'rsi' | 'change'>('score');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [screenerData, setScreenerData] = useState<ScreenerEntry[]>([]);
@@ -43,6 +45,7 @@ export default function Screener() {
           rank: item.rank ?? idx + 1,
           symbol: item.symbol,
           name: item.name || item.symbol,
+          sector: item.sector || 'Otros',
           price: item.price,
           priceChange24h: item.priceChange24h,
           rsi: item.rsi ?? 50,
@@ -103,6 +106,9 @@ export default function Screener() {
 
   const filteredData = useMemo(() => {
     let result = [...screenerData];
+    if (sectorFilter !== 'all') {
+      result = result.filter(e => e.sector === sectorFilter);
+    }
     if (signalFilter !== 'all') {
       result = result.filter(e => e.signal === signalFilter);
     }
@@ -116,7 +122,7 @@ export default function Screener() {
       }
     });
     return result;
-  }, [screenerData, signalFilter, sortBy, sortOrder]);
+  }, [screenerData, signalFilter, sectorFilter, sortBy, sortOrder]);
 
   const signalCounts = useMemo(() => {
     const counts: Record<string, number> = { all: screenerData.length };
@@ -184,9 +190,38 @@ export default function Screener() {
         ))}
       </div>
 
-      {/* Signal Filter Pills */}
-      <div className="flex flex-wrap justify-center gap-2 mb-6">
-        {SIGNAL_FILTER_KEYS.map(sig => (
+      {/* Filters (Sector & Signal) */}
+      <div className="flex flex-col items-center gap-4 mb-6">
+        {/* Sector Filter */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {SECTOR_KEYS.map(sec => {
+            const count = sec === 'all' 
+              ? screenerData.length 
+              : screenerData.filter(e => e.sector === sec).length;
+              
+            // Hide empty sectors from UI if they have 0 coins (except 'all')
+            if (sec !== 'all' && count === 0) return null;
+
+            return (
+              <button
+                key={sec}
+                onClick={() => setSectorFilter(sec)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
+                style={{
+                  background: sectorFilter === sec ? 'var(--accent-gold)' : 'var(--bg-secondary)',
+                  color: sectorFilter === sec ? '#000' : 'var(--text-muted)',
+                  border: `1px solid ${sectorFilter === sec ? 'var(--accent-gold)' : 'var(--border-color)'}`,
+                }}
+              >
+                {sec === 'all' ? 'All Sectors' : sec} <span className="opacity-70 font-normal">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Signal Filter Pills */}
+        <div className="flex flex-wrap justify-center gap-2">
+          {SIGNAL_FILTER_KEYS.map(sig => (
           <button
             key={sig}
             onClick={() => setSignalFilter(sig)}
@@ -199,7 +234,8 @@ export default function Screener() {
           >
             {getSignalEmoji(sig)} {t(SIGNAL_I18N[sig])} ({signalCounts[sig] || 0})
           </button>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Loading & Initializing State */}
@@ -280,11 +316,17 @@ export default function Screener() {
                     </div>
 
                     {/* Crypto */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold">{entry.symbol}</span>
                       <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-muted)' }}>
                         {entry.name}
                       </span>
+                      {entry.sector && entry.sector !== 'Otros' && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider" 
+                          style={{ background: 'var(--bg-tertiary)', color: 'var(--accent-gold)' }}>
+                          {entry.sector}
+                        </span>
+                      )}
                       {/* Mini Sparkline */}
                       {entry.sparklineData && entry.sparklineData.length > 0 && (
                         <div className="hidden md:flex items-end gap-px h-4 ml-2">
@@ -432,3 +474,5 @@ function getSignalBadgeClass(signal: Signal): string {
     case 'Venta Fuerte': return 'signal-badge--venta-fuerte';
   }
 }
+
+

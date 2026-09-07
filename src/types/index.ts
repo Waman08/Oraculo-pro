@@ -297,6 +297,7 @@ export interface ScreenerEntry {
   rank: number;
   symbol: string;
   name: string;
+  sector?: string;
   price: number;
   priceChange24h: number;
   rsi: number;

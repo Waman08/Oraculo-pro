@@ -77,6 +77,13 @@ async def get_full_onchain(symbol: str) -> dict:
     _onchain_full_cache[cache_key] = {"timestamp": current_time, "data": result}
     return result
 
-async def get_onchain_summary(symbol: str) -> dict:
+async def get_onchain_summary(symbol: str = 'BTC') -> dict:
     data = await get_full_onchain(symbol)
     return data
+async def get_signals_index(symbol: str) -> dict:
+    return {
+        "signalsIndex": 50,
+        "signal": "Neutral",
+        "subSignals": {}
+    }
+

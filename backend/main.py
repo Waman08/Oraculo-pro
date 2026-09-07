@@ -317,6 +317,8 @@ async def get_stablecoins_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+from sector_map import SECTOR_MAP
+
 @app.get("/api/screener")
 async def screener(
     timeframe: str = Query("1D"),
@@ -330,10 +332,9 @@ async def screener(
     # 1. Fetch live prices (Fast)
     tickers = await fetch_all_tickers()
     if not tickers:
-        raise HTTPException(status_code=502, detail="Failed to fetch tickers from Binance")
+        raise HTTPException(status_code=500, detail="Failed to fetch Binance tickers.")
 
     results = []
-    
     # 2. Match cached analysis with LIVE prices
     # If the cache is still building, we might have fewer than `limit` coins.
     for sym, ticker in tickers.items():
@@ -342,21 +343,15 @@ async def screener(
             results.append({
                 "symbol": sym,
                 "name": get_name(sym),
+                "sector": SECTOR_MAP.get(sym, "Otros"),
                 "price": ticker["price"],               # 100% REAL-TIME
-                "priceChange24h": ticker["priceChange24h"], # 100% REAL-TIME
-                "volume24h": ticker["volume24h"],           # 100% REAL-TIME
-                "rsi": cached["rsi"],
-                "quantScore": cached["quantScore"],
+                "priceChange24h": ticker["priceChange24h"],
+                "volume24h": ticker["volume24h"],
+                "quantScore": cached["quantScore"],     # From background ML analysis
                 "signal": cached["signal"],
-                "sparklineData": [],
+                "rsi": cached["rsi"]
             })
             
-    if not results:
-        # The backend just started and hasn't analyzed any coin yet
-        return []
-
-    # 3. Sort by score (lowest first = best buy opportunities)
-    results.sort(key=lambda x: x["quantScore"])
     
     # 4. Limit and Re-rank
     top_results = results[:limit]
