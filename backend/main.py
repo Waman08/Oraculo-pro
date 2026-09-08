@@ -296,7 +296,9 @@ async def get_onchain_dashboard_data(symbol: str):
     
     return {
         "symbol": symbol,
-        "metrics": data,
+        "metrics": data.get("metrics", {}),
+        "stablecoinMarket": data.get("stablecoinMarket"),
+        "defiTvl": data.get("defiTvl"),
         "signalsIndex": signals.get("signalsIndex", 50),
         "signalsSignal": signals.get("signal", "Neutral"),
         "subSignals": signals.get("subSignals", {}),
@@ -744,3 +746,4 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+

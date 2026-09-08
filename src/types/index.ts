@@ -247,6 +247,8 @@ export interface MarketAnalysis {
   currentPrice: number;
   priceChange24h: number;
   volume24h: number;
+  priceChangePeriod?: number;
+  volumePeriod?: number;
   marketCap: number;
   quantScore: number;            // 0-100
   signal: Signal;
@@ -304,6 +306,8 @@ export interface ScreenerEntry {
   quantScore: number;
   signal: Signal;
   volume24h: number;
+  priceChangePeriod?: number;
+  volumePeriod?: number;
   sparklineData: number[];    // últimos 7 puntos de precio
 }
 
@@ -333,3 +337,4 @@ export const SIGNAL_LABELS: Record<Signal, string> = {
   'Venta': '🟠 Venta',
   'Venta Fuerte': '🔴 Venta Fuerte',
 };
+

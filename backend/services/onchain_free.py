@@ -30,7 +30,7 @@ async def get_onchain_summary() -> Dict:
     puell_multiple = 1.0
     data_available = False
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
+    async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
         # 1. BTC Hash Rate
         hash_data = await fetch_with_retry(client, "https://api.blockchain.info/charts/hash-rate?format=json&timespan=1days")
         if hash_data and "values" in hash_data and hash_data["values"]:
@@ -104,3 +104,4 @@ async def get_onchain_summary() -> Dict:
     }
     
     return result
+

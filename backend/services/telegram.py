@@ -21,7 +21,7 @@ class TelegramSender:
         special characters like _, *, etc. that break Markdown mode).
         """
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                 resp = await client.post(
                     f"{self.base_url}/sendMessage",
                     json={
@@ -44,7 +44,7 @@ class TelegramSender:
     async def test_connection(self) -> bool:
         """Test if the bot token and chat_id are valid."""
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with httpx.AsyncClient(timeout=5.0, verify=False) as client:
                 resp = await client.get(f"{self.base_url}/getMe")
                 resp.raise_for_status()
                 data = resp.json()
@@ -176,3 +176,4 @@ def format_price_alert(
 def get_timestamp() -> str:
     from datetime import datetime
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+

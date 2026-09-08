@@ -142,13 +142,13 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
 
   // 1. VaR & Volatility normalization
   const rawVar = data.riskMetrics?.var95 ?? 0;
-  const var95Pct = Math.abs(rawVar > 1 ? rawVar : rawVar * 100);
+  const var95Pct = Math.abs(rawVar) < 1 && rawVar !== 0 ? Math.abs(rawVar * 100) : Math.abs(rawVar);
 
   const rawCvar = data.riskMetrics?.cvar95 ?? 0;
-  const cvar95Pct = Math.abs(rawCvar > 1 ? rawCvar : rawCvar * 100);
+  const cvar95Pct = Math.abs(rawCvar) < 1 && rawCvar !== 0 ? Math.abs(rawCvar * 100) : Math.abs(rawCvar);
 
   const rawVol = data.riskMetrics?.annualVolatility ?? 0;
-  const annVolPct = Math.abs(rawVol > 1 ? rawVol : rawVol * 100);
+  const annVolPct = Math.abs(rawVol) < 1 && rawVol !== 0 ? Math.abs(rawVol * 100) : Math.abs(rawVol);
 
   // VaR Color rule: red if loss > 5%, yellow if > 3%, green otherwise
   let varColor = 'var(--signal-buy)';
@@ -450,6 +450,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
     </div>
   );
 }
+
 
 
 

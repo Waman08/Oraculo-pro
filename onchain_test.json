@@ -1,0 +1,155 @@
+{
+  "dataAvailable": true,
+  "metrics": {
+    "fundamentals": {
+      "activeAddresses": 0,
+      "txCount": 1875066,
+      "feesMeanUSD": 0.16911919181040172,
+      "hashRate": 0.0,
+      "mempoolTps": 7.183333333333334
+    },
+    "supplyDynamics": {
+      "symbol": "ETH",
+      "price": 2491.11,
+      "marketCap": 304006365369,
+      "fdv": 304006365369,
+      "circulatingSupply": 122029704.52429247,
+      "totalSupply": 122029704.5242924,
+      "maxSupply": null,
+      "source": "coingecko",
+      "circulatingRatio": 100.0,
+      "maxSupplyRatio": null,
+      "fdvMcapRatio": 1.0,
+      "pendingInflationPct": 0.0,
+      "dilutionRisk": "none",
+      "dilutionLabel": "\u2705 Totalmente Circulando"
+    },
+    "defillama": {
+      "source": "defillama",
+      "symbol": "ETH",
+      "tvl": {
+        "chain": "Ethereum",
+        "tvl": 49511014979.95838,
+        "tokenSymbol": "ETH"
+      },
+      "fees": {
+        "protocol": "Ethereum",
+        "fees24h": 276793.0,
+        "fees7d": 2400886.0,
+        "fees30d": 11032576.0,
+        "revenue24h": 0.0
+      },
+      "dexVolume": {
+        "chain": "Ethereum",
+        "dexVolume24h": 1300081559.96,
+        "dexVolume7d": 8912147202.48,
+        "change24h": 42.74,
+        "change7d": -0.11,
+        "change30d": 160.01
+      },
+      "stablecoinLiquidity": {
+        "chain": "Ethereum",
+        "stablecoinTVL": 147149215398.80023
+      },
+      "metricsAvailable": 4
+    }
+  },
+  "stablecoinMarket": {
+    "totalMcap": 310898048427.5179,
+    "top": [
+      {
+        "name": "Tether",
+        "symbol": "USDT",
+        "mcap": 183383266893.5409,
+        "dominance": 58.98501705657843,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "USD Coin",
+        "symbol": "USDC",
+        "mcap": 74328205518.93994,
+        "dominance": 23.907581888944748,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "Sky Dollar",
+        "symbol": "USDS",
+        "mcap": 6634598691.944842,
+        "dominance": 2.134011044939582,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "Dai",
+        "symbol": "DAI",
+        "mcap": 4779906844.015321,
+        "dominance": 1.5374515434212184,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "Ethena USDe",
+        "symbol": "USDe",
+        "mcap": 4412596225.384868,
+        "dominance": 1.4193065050434406,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "World Liberty Financial USD",
+        "symbol": "USD1",
+        "mcap": 4275002741.2727942,
+        "dominance": 1.3750497189979818,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "Global Dollar",
+        "symbol": "USDG",
+        "mcap": 3236346648.3013496,
+        "dominance": 1.0409671802928235,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "PayPal USD",
+        "symbol": "PYUSD",
+        "mcap": 2865787640.447359,
+        "dominance": 0.9217773012542672,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "BlackRock USD",
+        "symbol": "BUIDL",
+        "mcap": 2816299081.220449,
+        "dominance": 0.9058593630500177,
+        "pegType": "peggedUSD"
+      },
+      {
+        "name": "Circle USYC",
+        "symbol": "USYC",
+        "mcap": 2622996314.3448443,
+        "dominance": 0.843683750223464,
+        "pegType": "peggedUSD"
+      }
+    ]
+  },
+  "defiTvl": [
+    {
+      "name": "Ethereum",
+      "tvl": 49511014979.95838
+    },
+    {
+      "name": "Solana",
+      "tvl": 5913201681.372977
+    },
+    {
+      "name": "BSC",
+      "tvl": 5724446051.56029
+    },
+    {
+      "name": "Base",
+      "tvl": 5604201671.601594
+    },
+    {
+      "name": "Tron",
+      "tvl": 5262972485.455214
+    }
+  ],
+  "dataDepth": "standard"
+}

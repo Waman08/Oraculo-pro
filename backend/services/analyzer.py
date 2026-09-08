@@ -585,6 +585,14 @@ async def run_analysis(
     change_24h = ticker["priceChange24h"]
     volume_24h = ticker["volume24h"]
 
+    try:
+        open_price = float(df_main["open"].iloc[-1])
+        change_period = round(((price / open_price) - 1) * 100, 2)
+        volume_period = float(df_main["volume"].iloc[-1])
+    except:
+        change_period = change_24h
+        volume_period = volume_24h
+
     # 2. Calculate real indicators
     indicators_main = calculate_all_indicators(df_main, price)
     indicators_htf = calculate_all_indicators(df_htf, price) if df_htf is not None and not df_htf.empty else indicators_main
@@ -685,6 +693,8 @@ async def run_analysis(
         "currentPrice": price,
         "priceChange24h": change_24h,
         "volume24h": volume_24h,
+        "priceChangePeriod": change_period,
+        "volumePeriod": volume_period,
         "marketCap": 0,  # Not available from klines
         "quantScore": breakdown["total"],
         "scoreBreakdown": breakdown,
@@ -766,4 +776,5 @@ async def run_screener_analysis_fast(
         "rsi": rsi,
         "indicators": indicators,
     }
+
 

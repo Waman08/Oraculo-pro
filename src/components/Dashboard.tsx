@@ -445,16 +445,16 @@ export default function Dashboard() {
           <span
             className="flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded"
             style={{
-              color: data.priceChange24h >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
-              background: data.priceChange24h >= 0 ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)',
+              color: (data.priceChangePeriod ?? data.priceChange24h) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
+              background: (data.priceChangePeriod ?? data.priceChange24h) >= 0 ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)',
             }}
           >
-            {data.priceChange24h >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-            {data.priceChange24h >= 0 ? '+' : ''}{data.priceChange24h.toFixed(2)}%
+            {(data.priceChangePeriod ?? data.priceChange24h) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {(data.priceChangePeriod ?? data.priceChange24h) >= 0 ? '+' : ''}{(data.priceChangePeriod ?? data.priceChange24h).toFixed(2)}%
           </span>
           <span className="text-xs flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
             <BarChart3 size={11} />
-            Vol: ${(data.volume24h / 1e9).toFixed(2)}B
+            Vol: ${((data.volumePeriod ?? data.volume24h) / 1e9).toFixed(2)}B
           </span>
         </div>
       </div>
@@ -504,9 +504,11 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Main Grid: Score Breakdown + DCA + Smart Money + Liquidity */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      {/* Main Grid: Score Breakdown + DCA + Smart Money + Liquidity  */}
+      <div className="w-full">
         <IndicatorGrid breakdown={breakdown} />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DCAPanel
           actionableData={data.actionableData}
           currentPrice={data.currentPrice}
@@ -548,3 +550,10 @@ function formatPrice(price: number): string {
   if (price >= 0.01) return price.toFixed(4);
   return price.toFixed(8);
 }
+
+
+
+
+
+
+

@@ -1261,7 +1261,7 @@ async def poll_telegram_updates(sender: TelegramSender, config: dict):
 
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
             resp = await client.get(
                 f"https://api.telegram.org/bot{config['BOT_TOKEN']}/getUpdates",
                 params={
@@ -1722,3 +1722,4 @@ def save_telegram_user(username: str, chat_id: str):
     users = load_telegram_users()
     users[username.replace('@', '').lower()] = str(chat_id)
     save_json_file(path, users)
+

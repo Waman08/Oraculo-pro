@@ -47,7 +47,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
         {t('score.breakdown')}
       </h3>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-children">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 stagger-children">
         {categories.map(({ key, data }) => {
           const Icon = CATEGORY_ICONS[key];
           const color = CATEGORY_COLORS[key];
@@ -146,3 +146,4 @@ function getScoreColor(score: number): string {
   if (score >= 70) return 'var(--signal-sell)';
   return 'var(--text-secondary)';
 }
+
