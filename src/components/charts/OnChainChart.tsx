@@ -122,6 +122,7 @@ export default function OnChainChart({
       window.removeEventListener('resize', handleResize);
       if (chartRef.current) {
         chartRef.current.remove();
+        chartRef.current = null;
       }
     };
   }, [data, type, color, baseline]);
@@ -136,3 +137,4 @@ export default function OnChainChart({
     </div>
   );
 }
+

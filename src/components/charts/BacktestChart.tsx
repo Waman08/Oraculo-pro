@@ -17,10 +17,7 @@ export function BacktestChart({ data }: BacktestChartProps) {
   useEffect(() => {
     if (!chartContainerRef.current || !data.equity_curve || data.equity_curve.length === 0) return;
 
-    // Destroy existing chart if any
-    if (chartRef.current) {
-      chartRef.current.remove();
-    }
+    
 
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
@@ -90,6 +87,7 @@ export function BacktestChart({ data }: BacktestChartProps) {
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
     };
   }, [data]);
 
@@ -143,3 +141,6 @@ export function BacktestChart({ data }: BacktestChartProps) {
     </div>
   );
 }
+
+
+

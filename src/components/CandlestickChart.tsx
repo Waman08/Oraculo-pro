@@ -120,11 +120,13 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     volumeSeriesRef.current = volumeSeries;
 
     // Fetch and Set Data
+    let isMounted = true;
     const loadData = async () => {
       setLoading(true);
       const interval = getInterval(timeframe);
       const klines = await fetchKlines(symbol, interval, 200);
       
+      if (!isMounted) return;
       if (klines && klines.length > 0) {
         const cData = klines.map((k: any) => ({
           time: (k[0] / 1000) as Time,
@@ -157,8 +159,10 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     window.addEventListener('resize', handleResize);
 
     return () => {
+      isMounted = false;
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
     };
   }, [symbol, timeframe, actionableData]);
 
@@ -195,3 +199,6 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     </div>
   );
 }
+
+
+

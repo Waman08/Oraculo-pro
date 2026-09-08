@@ -29,9 +29,7 @@ function MonteCarloChart({ paths, currentPrice }: { paths: { p10: number[]; p50:
   useEffect(() => {
     if (!chartContainerRef.current || !paths || !paths.p50 || paths.p50.length === 0) return;
 
-    if (chartRef.current) {
-      chartRef.current.remove();
-    }
+    
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -107,6 +105,7 @@ function MonteCarloChart({ paths, currentPrice }: { paths: { p10: number[]; p50:
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
     };
   }, [paths, currentPrice]);
 
@@ -451,3 +450,6 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
     </div>
   );
 }
+
+
+
