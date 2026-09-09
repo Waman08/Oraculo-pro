@@ -166,6 +166,7 @@ async def handle_command(sender: TelegramSender, text: str, chat_id: str):
         text = " ".join(parts)
 
     cmd = text.split()[0].lower()
+    sender.chat_id = chat_id
     args = text.split()[1:] if len(text.split()) > 1 else []
 
     handlers = {
@@ -1722,4 +1723,5 @@ def save_telegram_user(username: str, chat_id: str):
     users = load_telegram_users()
     users[username.replace('@', '').lower()] = str(chat_id)
     save_json_file(path, users)
+
 

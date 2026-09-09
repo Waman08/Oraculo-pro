@@ -120,7 +120,7 @@ def calculate_all_indicators(df: pd.DataFrame, current_price: float) -> Dict[str
     ichimoku_result = ta.ichimoku(high, low, close, tenkan=9, kijun=26, senkou=52)
     if ichimoku_result is not None and isinstance(ichimoku_result, tuple) and len(ichimoku_result) >= 2:
         ichi_df = ichimoku_result[0]
-        if not ichi_df.empty:
+        if ichi_df is not None and not ichi_df.empty:
             tenkan = round(_safe_float(ichi_df.iloc[-1, 0], current_price), 2)
             kijun = round(_safe_float(ichi_df.iloc[-1, 1], current_price), 2)
             senkou_a = round(_safe_float(
@@ -317,3 +317,4 @@ def calculate_all_indicators(df: pd.DataFrame, current_price: float) -> Dict[str
             "direction": sqz_dir,
         },
     }
+

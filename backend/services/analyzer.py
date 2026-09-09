@@ -764,7 +764,7 @@ async def run_screener_analysis_fast(
     trend = score_trend(indicators, price)
 
     # Simplified score: 55% momentum + 45% trend (no sentiment/onchain)
-    total = mom * 0.55 + trend * 0.45
+    total = mom[0] * 0.55 + trend[0] * 0.45
     total = round(max(0, min(100, total)), 1)
 
     signal = get_signal(total, mode)
@@ -776,5 +776,6 @@ async def run_screener_analysis_fast(
         "rsi": rsi,
         "indicators": indicators,
     }
+
 
 

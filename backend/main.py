@@ -110,7 +110,7 @@ async def screener_updater_loop():
                             }
                             return True
                     except Exception as e:
-                        print(f"[Screener Loop] Error analyzing {sym}: {e}")
+                        import traceback; print(f"\[Screener Loop\] Error analyzing {sym}:\n{traceback.format_exc()}")
                     return False
                 
                 results = await asyncio.gather(
@@ -746,4 +746,5 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+
 
