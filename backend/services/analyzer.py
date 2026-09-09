@@ -610,6 +610,19 @@ async def run_analysis(
     except Exception as e:
         print(f"[Analyzer] Supply dynamics error: {e}")
         supply_data = None
+
+    # Stablecoin Analysis
+    try:
+        stablecoin_overview = await get_stablecoin_overview()
+        stablecoin_flows = await get_stablecoin_flows()
+        stablecoin_analysis = {
+            'overview': stablecoin_overview,
+            'flows': stablecoin_flows,
+            'ssr': 0
+        }
+    except Exception as e:
+        print(f"[Analyzer] Stablecoin error: {e}")
+        stablecoin_analysis = None
     # 4. Score (Confluence of Main + 4H)
     breakdown_main = calculate_full_score(indicators_main, sentiment, onchain, liquidity, price, mode)
     breakdown_htf = calculate_full_score(indicators_htf, sentiment, onchain, liquidity, price, mode)
@@ -708,6 +721,7 @@ async def run_analysis(
         "smartMoney": smart_money,
         "liquidity": liquidity,
         "supplyDynamics": supply_data,
+        "stablecoinAnalysis": stablecoin_analysis,
         "macro": macro,
         "actuarial": actuarial_report,
         "actionableData": {
@@ -776,6 +790,9 @@ async def run_screener_analysis_fast(
         "rsi": rsi,
         "indicators": indicators,
     }
+
+
+
 
 
 

@@ -1,0 +1,554 @@
+{
+  "symbol": "BTC",
+  "name": "Bitcoin",
+  "timeframe": "1D",
+  "currentPrice": 78282.26,
+  "priceChange24h": -0.295,
+  "volume24h": 1114581387.220261,
+  "priceChangePeriod": -0.22,
+  "volumePeriod": 12983.77403,
+  "marketCap": 0,
+  "quantScore": 54.1,
+  "scoreBreakdown": {
+    "momentum": {
+      "score": 57.0,
+      "weight": 0.3,
+      "details": [
+        {
+          "name": "RSI (14)",
+          "value": "59.4",
+          "signal": "Neutral"
+        },
+        {
+          "name": "Stochastic",
+          "value": "44.3",
+          "signal": "Neutral"
+        },
+        {
+          "name": "MACD Hist",
+          "value": "-499.12",
+          "signal": "Sell"
+        }
+      ]
+    },
+    "trend": {
+      "score": 86.9,
+      "weight": 0.25,
+      "details": [
+        {
+          "name": "EMAs (20,50,200)",
+          "value": "3/3",
+          "signal": "Buy"
+        },
+        {
+          "name": "ADX",
+          "value": "47.6",
+          "signal": "Buy"
+        },
+        {
+          "name": "SuperTrend",
+          "value": "UP",
+          "signal": "Buy"
+        }
+      ]
+    },
+    "sentiment": {
+      "score": 59.7,
+      "weight": 0.1,
+      "details": [
+        {
+          "name": "Fear & Greed",
+          "value": "66.0",
+          "signal": "Neutral"
+        },
+        {
+          "name": "Altcoin Season",
+          "value": "45.0%",
+          "signal": "Neutral"
+        }
+      ]
+    },
+    "onChain": {
+      "score": 10.0,
+      "weight": 0.2,
+      "details": [
+        {
+          "name": "Supply Risk",
+          "value": "10.0",
+          "signal": "Bullish"
+        }
+      ]
+    },
+    "liquidity": {
+      "score": 50,
+      "weight": 0.15,
+      "details": [
+        {
+          "name": "Liquidity",
+          "value": "50.0",
+          "signal": "Neutral"
+        }
+      ]
+    },
+    "total": 54.1,
+    "ml": {
+      "score": 50.0,
+      "weight": 20,
+      "prediction": {
+        "prediction": "sideways",
+        "confidence": 51.25,
+        "probabilities": {
+          "up": 0.49,
+          "down": 0.51,
+          "sideways": 0.49
+        }
+      },
+      "volume_anomaly": {
+        "anomaly": false,
+        "score": -0.56,
+        "description": "Volumen normal",
+        "ratio": 100.0
+      },
+      "nlp_sentiment": {
+        "score": 50,
+        "label": "Neutral",
+        "source": "disabled"
+      }
+    }
+  },
+  "signal": "Mantener",
+  "indicators": {
+    "rsi": 59.41,
+    "stochastic": {
+      "k": 38.98,
+      "d": 49.58
+    },
+    "macd": {
+      "value": 2606.28,
+      "signal": 3105.403,
+      "hist": -499.123
+    },
+    "ema20": 77040.09,
+    "ema50": 72546.6,
+    "ema200": 72172.14,
+    "sma50": 70229.22,
+    "sma200": 69952.93,
+    "adx": 47.58,
+    "supertrend": {
+      "value": 72786.11,
+      "direction": "up"
+    },
+    "ichimoku": {
+      "tenkan": 64310.21,
+      "kijun": 62378.17,
+      "senkouA": 79282.0,
+      "senkouB": 72508.0,
+      "chikou": 78282.26
+    },
+    "bollinger": {
+      "upper": 80933.71,
+      "lower": 76468.8,
+      "basis": 78701.26
+    },
+    "atr": 2221.9,
+    "williamsR": -66.56,
+    "cci": 72360.07,
+    "obv": -310832.44,
+    "obvChange": -8.67,
+    "cmf": 0.1158,
+    "vwap": 78653.12,
+    "parabolicSar": {
+      "value": 76953.06,
+      "direction": "up"
+    },
+    "donchian": {
+      "upper": 82300.0,
+      "lower": 73027.02,
+      "mid": 77663.51
+    },
+    "pivotPoints": {
+      "pivot": 78653.12,
+      "r1": 79389.15,
+      "r2": 80496.03,
+      "s1": 77546.24,
+      "s2": 76810.21
+    },
+    "squeeze": {
+      "isActive": true,
+      "momentum": 549.8883,
+      "direction": "up"
+    }
+  },
+  "candlestickPatterns": {
+    "patterns": [
+      {
+        "name": "Doji",
+        "nameES": "Doji",
+        "type": "neutral",
+        "reliability": 2,
+        "barsAgo": 0,
+        "description": "Market indecision \u2014 open and close are nearly equal",
+        "descriptionES": "Indecisi\u00f3n del mercado \u2014 apertura y cierre son casi iguales"
+      },
+      {
+        "name": "Spinning Top",
+        "nameES": "Peonza",
+        "type": "neutral",
+        "reliability": 2,
+        "barsAgo": 0,
+        "description": "Small body with shadows on both sides \u2014 indecision",
+        "descriptionES": "Cuerpo peque\u00f1o con sombras en ambos lados \u2014 indecisi\u00f3n"
+      },
+      {
+        "name": "Bearish Engulfing",
+        "nameES": "Envolvente Bajista",
+        "type": "bearish",
+        "reliability": 4,
+        "barsAgo": 2,
+        "description": "Bearish candle fully engulfs previous bullish candle",
+        "descriptionES": "Vela bajista envuelve completamente la vela alcista previa"
+      },
+      {
+        "name": "Tweezer Top",
+        "nameES": "Pinzas Superior",
+        "type": "bearish",
+        "reliability": 3,
+        "barsAgo": 2,
+        "description": "Two candles with matching highs at top of uptrend",
+        "descriptionES": "Dos velas con m\u00e1ximos iguales en la cima de tendencia alcista"
+      },
+      {
+        "name": "Doji",
+        "nameES": "Doji",
+        "type": "neutral",
+        "reliability": 2,
+        "barsAgo": 4,
+        "description": "Market indecision \u2014 open and close are nearly equal",
+        "descriptionES": "Indecisi\u00f3n del mercado \u2014 apertura y cierre son casi iguales"
+      },
+      {
+        "name": "Spinning Top",
+        "nameES": "Peonza",
+        "type": "neutral",
+        "reliability": 2,
+        "barsAgo": 4,
+        "description": "Small body with shadows on both sides \u2014 indecision",
+        "descriptionES": "Cuerpo peque\u00f1o con sombras en ambos lados \u2014 indecisi\u00f3n"
+      }
+    ],
+    "summary": {
+      "bullishCount": 0,
+      "bearishCount": 2,
+      "neutralCount": 4,
+      "dominantBias": "bearish"
+    }
+  },
+  "divergences": {
+    "divergences": [
+      {
+        "indicator": "RSI",
+        "type": "hidden",
+        "direction": "bullish",
+        "strength": 1,
+        "barsAgo": 24,
+        "description": "Price made higher low but RSI made lower low \u2014 hidden bullish divergence (trend continuation)"
+      },
+      {
+        "indicator": "OBV",
+        "type": "hidden",
+        "direction": "bullish",
+        "strength": 1,
+        "barsAgo": 24,
+        "description": "Price made higher low but OBV made lower low \u2014 hidden bullish divergence (trend continuation)"
+      }
+    ],
+    "summary": {
+      "totalFound": 2,
+      "bullishCount": 2,
+      "bearishCount": 0,
+      "strongestSignal": "bullish"
+    }
+  },
+  "ml": {
+    "score": 50.0,
+    "weight": 20,
+    "prediction": {
+      "prediction": "sideways",
+      "confidence": 51.25,
+      "probabilities": {
+        "up": 0.49,
+        "down": 0.51,
+        "sideways": 0.49
+      }
+    },
+    "volume_anomaly": {
+      "anomaly": false,
+      "score": -0.56,
+      "description": "Volumen normal",
+      "ratio": 100.0
+    },
+    "nlp_sentiment": {
+      "score": 50,
+      "label": "Neutral",
+      "source": "disabled"
+    }
+  },
+  "sentiment": {
+    "fearGreedIndex": 66,
+    "fearGreedLabel": "Codicia",
+    "altcoinSeasonIndex": 45,
+    "altcoinSeasonLabel": "Neutral"
+  },
+  "onChain": {
+    "dataAvailable": true,
+    "metrics": {
+      "fundamentals": {
+        "activeAddresses": 59542347,
+        "txCount": 717433,
+        "feesMeanUSD": 0.3833447876615099,
+        "hashRate": 1.00809755741974e+21,
+        "mempoolTps": 3.216666666666667
+      },
+      "supplyDynamics": {
+        "symbol": "BTC",
+        "price": 78175,
+        "marketCap": 1570031913945,
+        "fdv": 1570033868470,
+        "circulatingSupply": 20082012.0,
+        "totalSupply": 20082059.0,
+        "maxSupply": 21000000.0,
+        "source": "coingecko",
+        "circulatingRatio": 100.0,
+        "maxSupplyRatio": 95.63,
+        "fdvMcapRatio": 1.0,
+        "pendingInflationPct": 0.0,
+        "dilutionRisk": "none",
+        "dilutionLabel": "\u2705 Totalmente Circulando"
+      }
+    },
+    "stablecoinMarket": {
+      "totalMcap": 310980056983.70886,
+      "top": [
+        {
+          "name": "Tether",
+          "symbol": "USDT",
+          "mcap": 183407125429.3405,
+          "dominance": 58.977134163606046,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "USD Coin",
+          "symbol": "USDC",
+          "mcap": 74319351836.28195,
+          "dominance": 23.89843019424724,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "Sky Dollar",
+          "symbol": "USDS",
+          "mcap": 6686176674.724999,
+          "dominance": 2.150033908790255,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "Dai",
+          "symbol": "DAI",
+          "mcap": 4801697989.558999,
+          "dominance": 1.5440533506013676,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "Ethena USDe",
+          "symbol": "USDe",
+          "mcap": 4465523496.986079,
+          "dominance": 1.4359517263899697,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "World Liberty Financial USD",
+          "symbol": "USD1",
+          "mcap": 4294115394.154991,
+          "dominance": 1.380833046274715,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "Global Dollar",
+          "symbol": "USDG",
+          "mcap": 3258809109.960364,
+          "dominance": 1.047915786487582,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "BlackRock USD",
+          "symbol": "BUIDL",
+          "mcap": 2800866442.6704493,
+          "dominance": 0.900657897434618,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "PayPal USD",
+          "symbol": "PYUSD",
+          "mcap": 2790537326.1463223,
+          "dominance": 0.8973364251111795,
+          "pegType": "peggedUSD"
+        },
+        {
+          "name": "Circle USYC",
+          "symbol": "USYC",
+          "mcap": 2602790158.6602144,
+          "dominance": 0.8369636895386399,
+          "pegType": "peggedUSD"
+        }
+      ]
+    },
+    "defiTvl": [
+      {
+        "name": "Ethereum",
+        "tvl": 49605353514.49142
+      },
+      {
+        "name": "Solana",
+        "tvl": 5940813988.689407
+      },
+      {
+        "name": "BSC",
+        "tvl": 5737274577.948996
+      },
+      {
+        "name": "Base",
+        "tvl": 5652661219.54887
+      },
+      {
+        "name": "Tron",
+        "tvl": 5525820034.620991
+      }
+    ],
+    "dataDepth": "standard"
+  },
+  "smartMoney": {
+    "volumeProfilePOC": 63414.73,
+    "orderBlocks": [
+      {
+        "type": "bullish",
+        "priceHigh": 77792.0,
+        "priceLow": 76264.0,
+        "strength": 45
+      },
+      {
+        "type": "bearish",
+        "priceHigh": 65622.83,
+        "priceLow": 63312.0,
+        "strength": 45
+      }
+    ],
+    "fairValueGaps": [
+      {
+        "type": "bullish",
+        "high": 78660.0,
+        "low": 77792.0,
+        "filled": false
+      },
+      {
+        "type": "bearish",
+        "high": 78546.13,
+        "low": 78330.0,
+        "filled": false
+      }
+    ]
+  },
+  "liquidity": {
+    "openInterestUSD": 8206444107.567903,
+    "longRatio": 0.5517,
+    "shortRatio": 0.4483,
+    "lsRatio": 1.2306,
+    "liquidityScore": 50
+  },
+  "supplyDynamics": {
+    "symbol": "BTC",
+    "price": 78175,
+    "marketCap": 1570031913945,
+    "fdv": 1570033868470,
+    "circulatingSupply": 20082012.0,
+    "totalSupply": 20082059.0,
+    "maxSupply": 21000000.0,
+    "source": "coingecko",
+    "circulatingRatio": 100.0,
+    "maxSupplyRatio": 95.63,
+    "fdvMcapRatio": 1.0,
+    "pendingInflationPct": 0.0,
+    "dilutionRisk": "none",
+    "dilutionLabel": "\u2705 Totalmente Circulando"
+  },
+  "stablecoinAnalysis": null,
+  "macro": {
+    "dxy": 98.8,
+    "dxyTrend": "Bajista",
+    "m2Global": null,
+    "m2Trend": "Requiere API FRED"
+  },
+  "actuarial": {
+    "riskMetrics": {
+      "var95": -3.48,
+      "cvar95": -5.27,
+      "annualVolatility": 40.68
+    },
+    "monteCarlo7D": {
+      "p10": 71624.27,
+      "p50": 77748.23,
+      "p90": 84535.62,
+      "paths": {
+        "p10": [
+          78282.26,
+          76070.28,
+          75157.57,
+          74420.92,
+          73472.72,
+          72803.28,
+          72238.64,
+          71624.27
+        ],
+        "p50": [
+          78282.26,
+          78286.56,
+          78167.02,
+          78106.54,
+          78149.33,
+          77947.23,
+          77999.33,
+          77748.23
+        ],
+        "p90": [
+          78282.26,
+          80620.87,
+          81351.71,
+          82111.93,
+          82669.2,
+          83214.97,
+          83999.76,
+          84535.62
+        ]
+      },
+      "jump_params": {
+        "lambda": 0.008,
+        "mu_j": -0.018,
+        "sigma_j": 0.1881
+      }
+    },
+    "markovRegime": {
+      "bull": 0.29,
+      "bear": 0.12,
+      "sideways": 0.59
+    },
+    "dataAvailable": true
+  },
+  "actionableData": {
+    "optimalEntry": 78282.26,
+    "dcaLevels": [],
+    "takeProfit": 82726.06,
+    "stopLoss": 73838.46,
+    "riskLevel": 1,
+    "macroRisk": "macrorisk.sideways"
+  },
+  "timestamp": "2026-09-09T20:57:31.975243",
+  "source": "python"
+}
