@@ -281,6 +281,19 @@ async def backtest(
 # ON-CHAIN ENDPOINTS
 # ============================================================
 
+@app.get("/api/onchain/stablecoins")
+async def get_stablecoins_data():
+    """Get global stablecoin flows and TVL data."""
+    try:
+        chains = await get_stablecoin_chains()
+        overview = await get_stablecoin_overview()
+        return {
+            "chains": chains,
+            "overview": overview
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/api/onchain/{symbol}")
 async def get_onchain_dashboard_data(symbol: str):
     """
@@ -304,19 +317,6 @@ async def get_onchain_dashboard_data(symbol: str):
         "subSignals": signals.get("subSignals", {}),
         "dataVerified": data.get("dataDepth") in ["full", "partial"]
     }
-
-@app.get("/api/onchain/stablecoins")
-async def get_stablecoins_data():
-    """Get global stablecoin flows and TVL data."""
-    try:
-        chains = await get_stablecoin_chains()
-        overview = await get_stablecoin_overview()
-        return {
-            "chains": chains,
-            "overview": overview
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 from sector_map import SECTOR_MAP
@@ -699,6 +699,8 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, symbol: str):
     await manager.connect(websocket)
     binance_symbol = symbol.lower()
+    if not binance_symbol.endswith("usdt"):
+        binance_symbol += "usdt"
     
     # Binance WS stream URL for live ticker (1-second updates)
     url = f"wss://stream.binance.com:9443/ws/{binance_symbol}@ticker"
@@ -746,5 +748,7 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
+
+
 
 

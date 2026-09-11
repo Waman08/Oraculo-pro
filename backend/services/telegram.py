@@ -14,21 +14,20 @@ class TelegramSender:
         self.chat_id = chat_id
         self.base_url = f"https://api.telegram.org/bot{bot_token}"
 
-    async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send a text message to the configured chat.
+    async def send_message(self, text: str, parse_mode: str = "HTML", chat_id: str = None) -> bool:
+        """Send a text message to the configured chat or to the provided chat_id.
         
-        Uses HTML parse mode by default for robustness (no issues with
-        special characters like _, *, etc. that break Markdown mode).
+        Uses HTML parse mode by default for robustness.
         """
+        target_chat_id = chat_id if chat_id else self.chat_id
         try:
             async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                 resp = await client.post(
                     f"{self.base_url}/sendMessage",
                     json={
-                        "chat_id": self.chat_id,
+                        "chat_id": target_chat_id,
                         "text": text,
-                        "parse_mode": parse_mode,
-                        "disable_web_page_preview": True,
+                        "parse_mode": parse_mode
                     },
                 )
                 resp.raise_for_status()
@@ -176,4 +175,5 @@ def format_price_alert(
 def get_timestamp() -> str:
     from datetime import datetime
     return datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+
 

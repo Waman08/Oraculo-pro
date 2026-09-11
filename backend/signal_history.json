@@ -411,5 +411,12 @@
     "signal": "Venta",
     "quantScore": 63.4,
     "price": 95.67
+  },
+  {
+    "timestamp": "2026-09-11T22:54:13.944010+00:00",
+    "symbol": "SOL",
+    "signal": "Venta",
+    "quantScore": 42.3,
+    "price": 101.83
   }
 ]

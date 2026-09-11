@@ -11,6 +11,7 @@
 # ============================================================
 
 import asyncio
+file_lock = asyncio.Lock()
 import json
 import os
 import sys
@@ -48,20 +49,21 @@ BOT_CONFIG_FILE = Path(__file__).parent / "bot_config.json"
 # PERSISTENT STATE HELPERS
 # ============================================================
 
-def load_json_file(path: Path, default=None):
+async def load_json_file(path: Path, default=None):
     """Load a JSON file safely, returning default on failure."""
     if default is None:
         default = {}
-    try:
-        if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return data
-    except Exception as e:
-        print(f"  [WARN] Error reading {path.name}: {e}")
+    async with file_lock:
+        try:
+            if path.exists():
+                data = json.loads(path.read_text(encoding="utf-8"))
+                return data
+        except Exception as e:
+            print(f"  [WARN] Error reading {path.name}: {e}")
     return default
 
 
-def save_json_file(path: Path, data):
+async def save_json_file(path: Path, data):
     """Save data to a JSON file safely."""
     try:
         path.write_text(
@@ -72,35 +74,35 @@ def save_json_file(path: Path, data):
         print(f"  [WARN] Error writing {path.name}: {e}")
 
 
-def load_sent_signals() -> Dict[str, str]:
-    return load_json_file(SIGNALS_FILE, {})
+async def load_sent_signals() -> Dict[str, str]:
+    return await load_json_file(SIGNALS_FILE, {})
 
 
-def save_sent_signals(signals: Dict[str, str]):
-    save_json_file(SIGNALS_FILE, signals)
+async def save_sent_signals(signals: Dict[str, str]):
+    await save_json_file(SIGNALS_FILE, signals)
 
 
-def load_price_alerts() -> List[dict]:
-    return load_json_file(ALERTS_FILE, [])
+async def load_price_alerts() -> List[dict]:
+    return await load_json_file(ALERTS_FILE, [])
 
 
-def save_price_alerts(alerts: List[dict]):
-    save_json_file(ALERTS_FILE, alerts)
+async def save_price_alerts(alerts: List[dict]):
+    await save_json_file(ALERTS_FILE, alerts)
 
 
-def load_bot_watchlist() -> List[str]:
-    data = load_json_file(WATCHLIST_FILE, {"symbols": ["BTC", "ETH", "SOL"]})
+async def load_bot_watchlist() -> List[str]:
+    data = await load_json_file(WATCHLIST_FILE, {"symbols": ["BTC", "ETH", "SOL"]})
     if isinstance(data, dict):
         return data.get("symbols", ["BTC", "ETH", "SOL"])
     return ["BTC", "ETH", "SOL"]
 
 
-def save_bot_watchlist(symbols: List[str]):
-    save_json_file(WATCHLIST_FILE, {"symbols": symbols})
+async def save_bot_watchlist(symbols: List[str]):
+    await save_json_file(WATCHLIST_FILE, {"symbols": symbols})
 
 
-def load_bot_config() -> Dict:
-    return load_json_file(BOT_CONFIG_FILE, {
+async def load_bot_config() -> Dict:
+    return await load_json_file(BOT_CONFIG_FILE, {
         "risk_mode": "Balanceado",
         "timeframe": "1D",
         "morning_report": True,
@@ -108,15 +110,16 @@ def load_bot_config() -> Dict:
     })
 
 
-def save_bot_config(config: Dict):
-    save_json_file(BOT_CONFIG_FILE, config)
+async def save_bot_config(config: Dict):
+    await save_json_file(BOT_CONFIG_FILE, config)
 
 
 # ============================================================
 # GLOBAL STATE
 # ============================================================
 
-sent_signals: Dict[str, str] = load_sent_signals()
+sent_signals: Dict[str, str] = {}
+_sent_signals_loaded = False
 triggered_price_alerts: Set[str] = set()
 last_summary_time: float = 0
 last_morning_report: str = ""  # YYYY-MM-DD
@@ -128,19 +131,19 @@ bot_status = "idle"
 last_check_time = None
 
 
-def get_config():
+async def get_config():
     if os.path.exists(env_path):
         load_dotenv(env_path, override=True)
     else:
         load_dotenv(override=True)
 
-    bot_config = load_bot_config()
+    bot_config = await load_bot_config()
 
     return {
         "BOT_TOKEN": os.getenv("TELEGRAM_BOT_TOKEN", ""),
         "CHAT_ID": os.getenv("TELEGRAM_CHAT_ID", ""),
         "CHECK_INTERVAL": int(os.getenv("CHECK_INTERVAL", "5")),
-        "WATCHLIST": load_bot_watchlist(),
+        "WATCHLIST": await load_bot_watchlist(),
         "RISK_MODE": bot_config.get("risk_mode", "Balanceado"),
         "TIMEFRAME": bot_config.get("timeframe", "1D"),
     }
@@ -166,7 +169,11 @@ async def handle_command(sender: TelegramSender, text: str, chat_id: str):
         text = " ".join(parts)
 
     cmd = text.split()[0].lower()
-    sender.chat_id = chat_id
+    
+    # Use a localized sender instance to avoid race conditions with background tasks
+    from services.telegram import TelegramSender
+    local_sender = TelegramSender(sender.bot_token, chat_id)
+    
     args = text.split()[1:] if len(text.split()) > 1 else []
 
     handlers = {
@@ -294,7 +301,7 @@ async def cmd_analyze(sender: TelegramSender, args: List[str]):
     )
 
     from services.analyzer import run_analysis
-    config = load_bot_config()
+    config = await load_bot_config()
     mode = config.get("risk_mode", "Balanceado")
     tf = config.get("timeframe", "1D")
 
@@ -467,7 +474,7 @@ async def cmd_create_alert(sender: TelegramSender, args: List[str]):
         )
         return
 
-    alerts = load_price_alerts()
+    alerts = await load_price_alerts()
     new_alert = {
         "id": f"tg_{int(time.time())}_{symbol}",
         "symbol": symbol,
@@ -476,7 +483,7 @@ async def cmd_create_alert(sender: TelegramSender, args: List[str]):
         "triggered": False,
     }
     alerts.append(new_alert)
-    save_price_alerts(alerts)
+    await save_price_alerts(alerts)
 
     cond_text = "supere" if condition == "above" else "baje de"
     cond_emoji = "📈" if condition == "above" else "📉"
@@ -493,7 +500,7 @@ async def cmd_create_alert(sender: TelegramSender, args: List[str]):
 
 async def cmd_list_alerts(sender: TelegramSender, args: List[str]):
     """List all price alerts."""
-    alerts = load_price_alerts()
+    alerts = await load_price_alerts()
 
     if not alerts:
         await sender.send_message(
@@ -544,7 +551,7 @@ async def cmd_delete_alert(sender: TelegramSender, args: List[str]):
         await sender.send_message("❌ Número inválido.", parse_mode="HTML")
         return
 
-    alerts = load_price_alerts()
+    alerts = await load_price_alerts()
     active = [a for a in alerts if not a.get("triggered", False)]
 
     if idx < 0 or idx >= len(active):
@@ -556,7 +563,7 @@ async def cmd_delete_alert(sender: TelegramSender, args: List[str]):
 
     removed = active[idx]
     alerts = [a for a in alerts if a.get("id") != removed.get("id")]
-    save_price_alerts(alerts)
+    await save_price_alerts(alerts)
 
     await sender.send_message(
         f"🗑 Alerta eliminada: <b>{removed['symbol']}</b> "
@@ -568,7 +575,7 @@ async def cmd_delete_alert(sender: TelegramSender, args: List[str]):
 
 async def cmd_watchlist(sender: TelegramSender, args: List[str]):
     """Show watchlist with current scores."""
-    watchlist = load_bot_watchlist()
+    watchlist = await load_bot_watchlist()
 
     if not watchlist:
         await sender.send_message(
@@ -584,7 +591,7 @@ async def cmd_watchlist(sender: TelegramSender, args: List[str]):
     )
 
     from services.analyzer import run_analysis
-    config = load_bot_config()
+    config = await load_bot_config()
     mode = config.get("risk_mode", "Balanceado")
     tf = config.get("timeframe", "1D")
 
@@ -647,7 +654,7 @@ async def cmd_add_watchlist(sender: TelegramSender, args: List[str]):
         )
         return
 
-    watchlist = load_bot_watchlist()
+    watchlist = await load_bot_watchlist()
     added = []
     for s in args:
         sym = s.upper()
@@ -656,7 +663,7 @@ async def cmd_add_watchlist(sender: TelegramSender, args: List[str]):
             added.append(sym)
 
     if added:
-        save_bot_watchlist(watchlist)
+        await save_bot_watchlist(watchlist)
         await sender.send_message(
             f"✅ Agregados a watchlist: <b>{', '.join(added)}</b>\n\n"
             f"Tu watchlist ({len(watchlist)}): {', '.join(watchlist)}",
@@ -678,7 +685,7 @@ async def cmd_remove_watchlist(sender: TelegramSender, args: List[str]):
         )
         return
 
-    watchlist = load_bot_watchlist()
+    watchlist = await load_bot_watchlist()
     removed = []
     for s in args:
         sym = s.upper()
@@ -687,7 +694,7 @@ async def cmd_remove_watchlist(sender: TelegramSender, args: List[str]):
             removed.append(sym)
 
     if removed:
-        save_bot_watchlist(watchlist)
+        await save_bot_watchlist(watchlist)
         await sender.send_message(
             f"🗑 Removidos de watchlist: <b>{', '.join(removed)}</b>\n\n"
             f"Tu watchlist ({len(watchlist)}): {', '.join(watchlist) if watchlist else 'vacía'}",
@@ -707,7 +714,7 @@ async def cmd_top_signals(sender: TelegramSender, args: List[str]):
     await sender.send_message("⏳ Escaneando mercado...", parse_mode="HTML")
 
     from services.analyzer import run_analysis
-    config = load_bot_config()
+    config = await load_bot_config()
     mode = config.get("risk_mode", "Balanceado")
     tf = config.get("timeframe", "1D")
 
@@ -789,7 +796,7 @@ async def cmd_market_summary(sender: TelegramSender, args: List[str]):
 
     from services.analyzer import run_analysis, fetch_fear_greed, fetch_real_macro
 
-    config = load_bot_config()
+    config = await load_bot_config()
     mode = config.get("risk_mode", "Balanceado")
     tf = config.get("timeframe", "1D")
 
@@ -889,7 +896,7 @@ async def cmd_patterns(sender: TelegramSender, args: List[str]):
 
     from services.binance_client import fetch_klines
 
-    config = load_bot_config()
+    config = await load_bot_config()
     tf = config.get("timeframe", "1D")
 
     df = await fetch_klines(symbol, tf, limit=100)
@@ -996,7 +1003,7 @@ async def cmd_set_mode(sender: TelegramSender, args: List[str]):
     valid_modes = {"seguro": "Seguro", "balanceado": "Balanceado", "agresivo": "Agresivo"}
 
     if not args or args[0].lower() not in valid_modes:
-        config = load_bot_config()
+        config = await load_bot_config()
         current = config.get("risk_mode", "Balanceado")
         await sender.send_message(
             f"⚙️ <b>Modo de Riesgo</b>\n\n"
@@ -1010,9 +1017,9 @@ async def cmd_set_mode(sender: TelegramSender, args: List[str]):
         return
 
     new_mode = valid_modes[args[0].lower()]
-    config = load_bot_config()
+    config = await load_bot_config()
     config["risk_mode"] = new_mode
-    save_bot_config(config)
+    await save_bot_config(config)
 
     mode_emojis = {"Seguro": "🛡️", "Balanceado": "⚖️", "Agresivo": "🔥"}
 
@@ -1025,9 +1032,9 @@ async def cmd_set_mode(sender: TelegramSender, args: List[str]):
 
 async def cmd_bot_status(sender: TelegramSender, args: List[str]):
     """Show bot status information."""
-    config = load_bot_config()
-    watchlist = load_bot_watchlist()
-    alerts = load_price_alerts()
+    config = await load_bot_config()
+    watchlist = await load_bot_watchlist()
+    alerts = await load_price_alerts()
     active_alerts = [a for a in alerts if not a.get("triggered", False)]
 
     status_emoji = "🟢" if bot_status == "running" else "🟡" if bot_status == "idle" else "🔴"
@@ -1337,7 +1344,7 @@ def format_price_alert_message(alert: dict, current_price: float) -> str:
 
 async def check_price_alerts(sender: TelegramSender):
     global triggered_price_alerts
-    alerts = load_price_alerts()
+    alerts = await load_price_alerts()
     if not alerts:
         return
 
@@ -1386,21 +1393,16 @@ async def check_price_alerts(sender: TelegramSender):
             msg = format_price_alert_message(alert, current_price)
             
             # Route to dynamic user if specified, else use default sender
-            original_chat_id = sender.chat_id
-            target_chat_id = original_chat_id
+            target_chat_id = sender.chat_id
             if alert_username:
                 clean_username = alert_username.replace("@", "").lower()
                 if clean_username in users:
                     target_chat_id = users[clean_username]
                 else:
                     print(f"  [WARN] Could not find chat_id for telegramUsername: @{clean_username}")
-                    # Skip sending if we can't find the targeted user
                     continue
 
-            # Override chat_id and send
-            sender.chat_id = target_chat_id
-            success = await sender.send_message(msg, parse_mode="HTML")
-            sender.chat_id = original_chat_id # restore
+            success = await sender.send_message(msg, parse_mode="HTML", chat_id=target_chat_id)
 
             if success:
                 triggered_price_alerts.add(alert_id)
@@ -1409,7 +1411,7 @@ async def check_price_alerts(sender: TelegramSender):
                 print(f"  [ALERT] Price alert sent to {target_chat_id} for {symbol} {condition} ${target_price:,.2f}")
 
     if any_triggered:
-        save_price_alerts(alerts)
+        await save_price_alerts(alerts)
 
 
 # ============================================================
@@ -1417,7 +1419,10 @@ async def check_price_alerts(sender: TelegramSender):
 # ============================================================
 
 async def check_signal_alerts(sender: TelegramSender, config: dict):
-    global sent_signals
+    global sent_signals, _sent_signals_loaded
+    if not _sent_signals_loaded:
+        sent_signals = await load_sent_signals()
+        _sent_signals_loaded = True
     from services.analyzer import run_analysis
 
     has_changes = False
@@ -1464,7 +1469,7 @@ async def check_signal_alerts(sender: TelegramSender, config: dict):
                             "quantScore": score,
                             "price": price,
                         })
-                        save_json_file(HISTORY_FILE, history)
+                        await save_json_file(HISTORY_FILE, history)
                     except Exception as e:
                         print(f"  [ERR] Could not save history: {e}")
             else:
@@ -1475,7 +1480,7 @@ async def check_signal_alerts(sender: TelegramSender, config: dict):
             print(f"  [ERR] Error analyzing {symbol}: {e}")
 
     if has_changes:
-        save_sent_signals(sent_signals)
+        await save_sent_signals(sent_signals)
 
 
 # ============================================================
@@ -1578,7 +1583,7 @@ async def command_polling_loop():
 
     while True:
         try:
-            config = get_config()
+            config = await get_config()
             if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
                 await asyncio.sleep(10)
                 continue
@@ -1606,7 +1611,7 @@ async def price_alerts_loop():
     print("[INIT] Starting Price Alerts background task (every 15s)...")
     while True:
         try:
-            config = get_config()
+            config = await get_config()
             if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
                 bot_status = "idle"
                 await asyncio.sleep(10)
@@ -1631,7 +1636,7 @@ async def signal_alerts_loop():
     print("[INIT] Starting Watchlist Signal Alerts background task...")
     while True:
         try:
-            config = get_config()
+            config = await get_config()
             if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
                 await asyncio.sleep(15)
                 continue
@@ -1654,7 +1659,7 @@ async def signal_alerts_loop():
 async def periodic_summary_loop():
     while True:
         try:
-            config = get_config()
+            config = await get_config()
             if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
                 await asyncio.sleep(30)
                 continue
@@ -1673,7 +1678,7 @@ async def actuarial_alerts_loop():
     print("[INIT] Starting Actuarial Alerts background task...")
     while True:
         try:
-            config = get_config()
+            config = await get_config()
             if not config["BOT_TOKEN"] or not config["CHAT_ID"]:
                 await asyncio.sleep(60)
                 continue
@@ -1714,14 +1719,26 @@ if __name__ == "__main__":
         asyncio.run(start_bot_loop())
     except KeyboardInterrupt:
         print("\n[BYE] Bot detenido.")
-def load_telegram_users():
+async def load_telegram_users():
     path = Path(__file__).parent / 'telegram_users.json'
-    return load_json_file(path, {})
+    return await load_json_file(path, {})
 
-def save_telegram_user(username: str, chat_id: str):
+async def save_telegram_user(username: str, chat_id: str):
     path = Path(__file__).parent / 'telegram_users.json'
-    users = load_telegram_users()
+    users = await load_telegram_users()
     users[username.replace('@', '').lower()] = str(chat_id)
-    save_json_file(path, users)
+    await save_json_file(path, users)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
