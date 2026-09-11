@@ -653,9 +653,15 @@ async def run_analysis(
     try:
         actuarial_engine = ActuarialEngine(df_main.copy())
         actuarial_report = actuarial_engine.generate_full_actuarial_report()
+        # Default institutional parameters for Kelly & VaR
+        win_rate = 0.55
+        profit_loss_ratio = 1.5
+        capital = 10000.0 # $10,000 USD portfolio benchmark
+        position_sizing = actuarial_engine.calculate_position_size(win_rate, profit_loss_ratio, capital)
     except Exception as e:
         print(f"[Actuarial] Error: {e}")
         actuarial_report = {"dataAvailable": False}
+        position_sizing = {"recommendedSizeUSD": 0.0, "portfolioPct": 0.0, "maxRiskUSD": 0.0}
     
     # Integrate ML into final score (e.g. up to +/- 10 points based on confidence)
     ml_adjustment = 0.0
@@ -744,6 +750,9 @@ async def run_analysis(
             "stopLoss": stop_loss,
             "riskLevel": risk_level,
             "macroRisk": get_macro_risk_text(total),
+            "positionSizing": position_sizing,
+            "fundingRate": liquidity.get("fundingRate", 0.0) if isinstance(liquidity, dict) else 0.0,
+            "squeezeRisk": liquidity.get("squeezeRisk", "low") if isinstance(liquidity, dict) else "low",
         },
         "timestamp": datetime.utcnow().isoformat(),
         "source": "python",
@@ -803,6 +812,8 @@ async def run_screener_analysis_fast(
         "rsi": rsi,
         "indicators": indicators,
     }
+
+
 
 
 

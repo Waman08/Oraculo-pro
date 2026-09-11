@@ -214,3 +214,4 @@ class ActuarialEngine:
         except Exception as e:
             print(f"[ActuarialEngine] Error generando reporte: {e}")
             return {"dataAvailable": False}
+
