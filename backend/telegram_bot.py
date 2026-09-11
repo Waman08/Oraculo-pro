@@ -38,81 +38,124 @@ from services.telegram import TelegramSender, format_signal_alert, format_watchl
 env_path = os.path.join(os.path.dirname(__file__), "..", ".env.local")
 
 # File paths
-ALERTS_FILE = Path(__file__).parent / "price_alerts.json"
-SIGNALS_FILE = Path(__file__).parent / "sent_signals.json"
-HISTORY_FILE = Path(__file__).parent / "signal_history.json"
-WATCHLIST_FILE = Path(__file__).parent / "bot_watchlist.json"
-BOT_CONFIG_FILE = Path(__file__).parent / "bot_config.json"
+
+
+
+
+
 
 
 # ============================================================
-# PERSISTENT STATE HELPERS
+# PERSISTENCIA EN SUPABASE
 # ============================================================
+from services.supabase_client import supabase
 
-async def load_json_file(path: Path, default=None):
-    """Load a JSON file safely, returning default on failure."""
-    if default is None:
-        default = {}
-    async with file_lock:
-        try:
-            if path.exists():
-                data = json.loads(path.read_text(encoding="utf-8"))
-                return data
-        except Exception as e:
-            print(f"  [WARN] Error reading {path.name}: {e}")
-    return default
-
-
-async def save_json_file(path: Path, data):
-    """Save data to a JSON file safely."""
+async def load_price_alerts(session_id: str = "default") -> list:
+    if not supabase: return []
     try:
-        path.write_text(
-            json.dumps(data, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        res = supabase.table("price_alerts").select("*").eq("triggered", False).execute()
+        return res.data if res.data else []
     except Exception as e:
-        print(f"  [WARN] Error writing {path.name}: {e}")
+        print(f"Error fetching alerts: {e}")
+        return []
 
+async def save_price_alerts(alerts: list, session_id: str = "default"):
+    pass
 
-async def load_sent_signals() -> Dict[str, str]:
-    return await load_json_file(SIGNALS_FILE, {})
+async def mark_alert_triggered(alert_id: str):
+    if not supabase: return
+    try:
+        supabase.table("price_alerts").update({"triggered": True}).eq("id", alert_id).execute()
+    except Exception:
+        pass
 
+async def load_bot_watchlist(session_id: str = "default") -> list:
+    if not supabase: return ["BTC", "ETH", "SOL"]
+    try:
+        res = supabase.table("watchlist_items").select("symbol").eq("session_id", session_id).execute()
+        return [row["symbol"] for row in res.data] if res.data else ["BTC", "ETH", "SOL"]
+    except Exception:
+        return ["BTC", "ETH", "SOL"]
 
-async def save_sent_signals(signals: Dict[str, str]):
-    await save_json_file(SIGNALS_FILE, signals)
+async def save_bot_watchlist(symbols: list, session_id: str = "default"):
+    if not supabase: return
+    try:
+        supabase.table("watchlist_items").delete().eq("session_id", session_id).execute()
+        if symbols:
+            supabase.table("watchlist_items").insert([{"session_id": session_id, "symbol": s} for s in symbols]).execute()
+    except Exception:
+        pass
 
+async def load_bot_config(session_id: str = "default") -> dict:
+    default_config = {"risk_mode": "Balanceado", "timeframe": "1D", "chat_id": ""}
+    if not supabase: return default_config
+    try:
+        res = supabase.table("telegram_config").select("*").eq("session_id", session_id).execute()
+        if res.data and len(res.data) > 0:
+            row = res.data[0]
+            default_config["chat_id"] = row.get("chat_id", "")
+            default_config["risk_mode"] = row.get("risk_mode", "Balanceado")
+            default_config["timeframe"] = row.get("timeframe", "1D")
+            return default_config
+    except Exception:
+        pass
+    return default_config
 
-async def load_price_alerts() -> List[dict]:
-    return await load_json_file(ALERTS_FILE, [])
+async def save_bot_config(config: dict, session_id: str = "default"):
+    if not supabase: return
+    try:
+        supabase.table("telegram_config").upsert({
+            "session_id": session_id,
+            "chat_id": config.get("chat_id", ""),
+            "risk_mode": config.get("risk_mode", "Balanceado"),
+            "timeframe": config.get("timeframe", "1D"),
+        }, on_conflict="session_id").execute()
+    except Exception:
+        pass
 
+async def load_sent_signals() -> dict:
+    return {}
 
-async def save_price_alerts(alerts: List[dict]):
-    await save_json_file(ALERTS_FILE, alerts)
+async def save_sent_signals(signals: dict):
+    pass
 
+async def record_signal_history(symbol: str, signal: str, score: float, price: float, timeframe: str, risk_mode: str):
+    if not supabase: return
+    try:
+        supabase.table("signal_history").insert({
+            "symbol": symbol,
+            "signal": signal,
+            "score": score,
+            "price": price,
+            "timeframe": timeframe,
+            "risk_mode": risk_mode
+        }).execute()
+    except Exception:
+        pass
 
-async def load_bot_watchlist() -> List[str]:
-    data = await load_json_file(WATCHLIST_FILE, {"symbols": ["BTC", "ETH", "SOL"]})
-    if isinstance(data, dict):
-        return data.get("symbols", ["BTC", "ETH", "SOL"])
-    return ["BTC", "ETH", "SOL"]
+async def get_chat_id_for_session(session_id: str) -> str:
+    if not supabase: return ""
+    try:
+        res = supabase.table("telegram_config").select("chat_id").eq("session_id", session_id).execute()
+        if res.data and len(res.data) > 0:
+            return res.data[0]["chat_id"]
+    except Exception:
+        pass
+    return ""
 
+async def load_telegram_users():
+    return {}
 
-async def save_bot_watchlist(symbols: List[str]):
-    await save_json_file(WATCHLIST_FILE, {"symbols": symbols})
-
-
-async def load_bot_config() -> Dict:
-    return await load_json_file(BOT_CONFIG_FILE, {
-        "risk_mode": "Balanceado",
-        "timeframe": "1D",
-        "morning_report": True,
-        "evening_report": True,
-    })
-
-
-async def save_bot_config(config: Dict):
-    await save_json_file(BOT_CONFIG_FILE, config)
-
+async def save_telegram_user(username: str, chat_id: str):
+    if not supabase: return
+    try:
+        # Save as a telegram_config entry where session_id is the username
+        supabase.table("telegram_config").upsert({
+            "session_id": username,
+            "chat_id": str(chat_id)
+        }, on_conflict="session_id").execute()
+    except Exception:
+        pass
 
 # ============================================================
 # GLOBAL STATE
@@ -132,6 +175,7 @@ last_check_time = None
 
 
 async def get_config():
+    env_path = Path(__file__).parent.parent / ".env.local"
     if os.path.exists(env_path):
         load_dotenv(env_path, override=True)
     else:
@@ -139,9 +183,13 @@ async def get_config():
 
     bot_config = await load_bot_config()
 
+    chat_id = bot_config.get("chat_id")
+    if not chat_id:
+        chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+
     return {
         "BOT_TOKEN": os.getenv("TELEGRAM_BOT_TOKEN", ""),
-        "CHAT_ID": os.getenv("TELEGRAM_CHAT_ID", ""),
+        "CHAT_ID": chat_id,
         "CHECK_INTERVAL": int(os.getenv("CHECK_INTERVAL", "5")),
         "WATCHLIST": await load_bot_watchlist(),
         "RISK_MODE": bot_config.get("risk_mode", "Balanceado"),
@@ -1365,17 +1413,13 @@ async def check_price_alerts(sender: TelegramSender):
         except Exception as e:
             print(f"  [WARN] Error fetching price for {sym}: {e}")
 
-    # Load users dict to route messages dynamically
-    users_path = Path(__file__).parent / "telegram_users.json"
-    users = json.loads(users_path.read_text(encoding="utf-8")) if users_path.exists() else {}
-
     any_triggered = False
     for alert in alerts:
         if alert.get("triggered", False):
             continue
         alert_id = alert.get("id", "")
         symbol = alert.get("symbol", "").upper()
-        target_price = alert.get("targetPrice", 0)
+        target_price = alert.get("target_price", alert.get("targetPrice", 0))
         condition = alert.get("condition", "above")
         alert_username = alert.get("telegramUsername", "")
 
@@ -1393,14 +1437,9 @@ async def check_price_alerts(sender: TelegramSender):
             msg = format_price_alert_message(alert, current_price)
             
             # Route to dynamic user if specified, else use default sender
-            target_chat_id = sender.chat_id
-            if alert_username:
-                clean_username = alert_username.replace("@", "").lower()
-                if clean_username in users:
-                    target_chat_id = users[clean_username]
-                else:
-                    print(f"  [WARN] Could not find chat_id for telegramUsername: @{clean_username}")
-                    continue
+            session_id = alert.get("session_id", "")
+            target_chat_id = await get_chat_id_for_session(session_id) if session_id else sender.chat_id
+            if not target_chat_id: target_chat_id = sender.chat_id
 
             success = await sender.send_message(msg, parse_mode="HTML", chat_id=target_chat_id)
 
@@ -1408,10 +1447,10 @@ async def check_price_alerts(sender: TelegramSender):
                 triggered_price_alerts.add(alert_id)
                 alert["triggered"] = True
                 any_triggered = True
+                await mark_alert_triggered(alert_id)
                 print(f"  [ALERT] Price alert sent to {target_chat_id} for {symbol} {condition} ${target_price:,.2f}")
 
-    if any_triggered:
-        await save_price_alerts(alerts)
+    
 
 
 # ============================================================
@@ -1458,20 +1497,7 @@ async def check_signal_alerts(sender: TelegramSender, config: dict):
                     print(f"  [SENT] Signal alert sent for {symbol}: {signal}")
 
                     # Save to signal history
-                    try:
-                        history = load_json_file(HISTORY_FILE, [])
-                        if not isinstance(history, list):
-                            history = []
-                        history.append({
-                            "timestamp": datetime.now(timezone.utc).isoformat(),
-                            "symbol": symbol,
-                            "signal": signal,
-                            "quantScore": score,
-                            "price": price,
-                        })
-                        await save_json_file(HISTORY_FILE, history)
-                    except Exception as e:
-                        print(f"  [ERR] Could not save history: {e}")
+                    await record_signal_history(symbol, signal, score, price, config.get("timeframe", "1D"), config.get("risk_mode", "Balanceado"))
             else:
                 if sent_signals.get(symbol) != signal:
                     sent_signals[symbol] = signal
@@ -1719,15 +1745,17 @@ if __name__ == "__main__":
         asyncio.run(start_bot_loop())
     except KeyboardInterrupt:
         print("\n[BYE] Bot detenido.")
-async def load_telegram_users():
-    path = Path(__file__).parent / 'telegram_users.json'
-    return await load_json_file(path, {})
 
-async def save_telegram_user(username: str, chat_id: str):
-    path = Path(__file__).parent / 'telegram_users.json'
-    users = await load_telegram_users()
-    users[username.replace('@', '').lower()] = str(chat_id)
-    await save_json_file(path, users)
+
+
+
+
+
+
+
+
+
+
 
 
 

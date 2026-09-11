@@ -1,61 +1,48 @@
-import sqlite3
-import json
-import os
+﻿import json
 from typing import Dict, Any
+from services.supabase_client import supabase
 
-# Ensure the data directory exists
-DB_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
-os.makedirs(DB_DIR, exist_ok=True)
-DB_PATH = os.path.join(DB_DIR, "user_prefs.db")
-
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS user_prefs (
-            uuid TEXT PRIMARY KEY,
-            preferences TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-# Initialize DB on import
-init_db()
-
-def get_user_prefs(uuid: str) -> Dict[str, Any]:
-    """Retrieve preferences for a given UUID."""
-    if not uuid:
+def get_user_prefs(session_id: str) -> Dict[str, Any]:
+    """Retrieve preferences for a given session_id via Supabase."""
+    if not session_id or not supabase:
         return {}
         
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("SELECT preferences FROM user_prefs WHERE uuid = ?", (uuid,))
-    row = cursor.fetchone()
-    conn.close()
-    
-    if row:
-        try:
-            return json.loads(row[0])
-        except json.JSONDecodeError:
-            return {}
-    return {}
+    try:
+        response = supabase.table('user_preferences').select('*').eq('session_id', session_id).execute()
+        data = response.data
+        if data and len(data) > 0:
+            return data[0]
+        return {}
+    except Exception as e:
+        print(f"[WARN] Error fetching user_prefs from Supabase: {e}")
+        return {}
 
-def save_user_prefs(uuid: str, prefs: Dict[str, Any]) -> bool:
-    """Save preferences for a given UUID."""
-    if not uuid:
+def save_user_prefs(session_id: str, prefs: Dict[str, Any]) -> bool:
+    """Save preferences for a given session_id via Supabase."""
+    if not session_id or not supabase:
         return False
         
     # Get existing to merge
-    existing = get_user_prefs(uuid)
-    existing.update(prefs)
+    existing = get_user_prefs(session_id)
+    # The schema specifies columns like theme, locale, symbol, risk_mode, timeframe
+    valid_keys = ['theme', 'locale', 'symbol', 'risk_mode', 'timeframe']
     
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT OR REPLACE INTO user_prefs (uuid, preferences) VALUES (?, ?)",
-        (uuid, json.dumps(existing))
-    )
-    conn.commit()
-    conn.close()
-    return True
+    # Filter only valid keys
+    update_data = {k: v for k, v in prefs.items() if k in valid_keys}
+    if not update_data:
+        return True # Nothing to update
+        
+    update_data['session_id'] = session_id
+    
+    # Supabase uses upsert on a unique constraint or primary key
+    # Since session_id is UNIQUE, we can use it to match if we supply id, 
+    # or just use upsert with on_conflict='session_id'.
+    try:
+        if 'id' in existing:
+            update_data['id'] = existing['id']
+            
+        supabase.table('user_preferences').upsert(update_data, on_conflict='session_id').execute()
+        return True
+    except Exception as e:
+        print(f"[WARN] Error saving user_prefs to Supabase: {e}")
+        return False

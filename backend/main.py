@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import websockets
@@ -41,7 +41,7 @@ START_TIME = time.time()
 
 # Path to price alerts file (shared with telegram_bot.py)
 ALERTS_FILE = Path(__file__).parent / "price_alerts.json"
-ENV_FILE = Path(__file__).parent.parent / ".env.local"
+
 
 
 async def cache_cleanup_loop():
@@ -498,46 +498,25 @@ async def telegram_test(body: dict):
 
 
 @app.post("/api/telegram/config")
-async def telegram_config(body: dict):
-    """
-    Save Telegram credentials to .env.local so the bot can use them.
-    Body: { "bot_token": "...", "chat_id": "..." }
-    """
+async def telegram_config(request: Request, body: dict):
+    """Save Telegram credentials to Supabase telegram_config."""
+    from services.supabase_client import supabase
+    session_id = request.headers.get("x-user-id", "default")
     bot_token = body.get("bot_token", "")
     chat_id = body.get("chat_id", "")
-
     if not bot_token or not chat_id:
         raise HTTPException(status_code=400, detail="bot_token and chat_id are required")
-
-    # Read current .env.local
-    env_content = ""
-    if ENV_FILE.exists():
-        env_content = ENV_FILE.read_text(encoding="utf-8")
-
-    # Update or add TELEGRAM_BOT_TOKEN
-    lines = env_content.split("\n")
-    new_lines = []
-    token_set = False
-    chat_set = False
-
-    for line in lines:
-        if line.startswith("TELEGRAM_BOT_TOKEN="):
-            new_lines.append(f"TELEGRAM_BOT_TOKEN={bot_token}")
-            token_set = True
-        elif line.startswith("TELEGRAM_CHAT_ID="):
-            new_lines.append(f"TELEGRAM_CHAT_ID={chat_id}")
-            chat_set = True
-        else:
-            new_lines.append(line)
-
-    if not token_set:
-        new_lines.append(f"TELEGRAM_BOT_TOKEN={bot_token}")
-    if not chat_set:
-        new_lines.append(f"TELEGRAM_CHAT_ID={chat_id}")
-
-    ENV_FILE.write_text("\n".join(new_lines), encoding="utf-8")
-
-    return {"success": True, "message": "Telegram credentials saved to .env.local"}
+    
+    if supabase:
+        try:
+            supabase.table("telegram_config").upsert({
+                "session_id": session_id,
+                "chat_id": chat_id
+            }, on_conflict="session_id").execute()
+        except Exception as e:
+            print(f"[ERR] Save telegram config to Supabase failed: {e}")
+    
+    return {"success": True, "message": "Telegram credentials saved to Supabase"}
 
 
 @app.post("/api/telegram/send-alert")
@@ -567,53 +546,65 @@ async def telegram_send_alert(body: dict):
 
 
 @app.get("/api/alerts")
-async def get_alerts():
-    """Get all price alerts from the JSON file."""
+async def get_alerts(request: Request):
+    """Get all price alerts from Supabase."""
+    from services.supabase_client import supabase
+    session_id = request.headers.get("x-user-id", "default")
+    if not supabase: return {"alerts": []}
     try:
-        if ALERTS_FILE.exists():
-            data = json.loads(ALERTS_FILE.read_text(encoding="utf-8"))
-            return {"alerts": data if isinstance(data, list) else []}
-    except Exception:
-        pass
-    return {"alerts": []}
+        res = supabase.table("price_alerts").select("*").eq("session_id", session_id).execute()
+        # Mapping to match frontend expected fields
+        alerts = []
+        for r in res.data:
+            alerts.append({
+                "id": str(r.get("id")),
+                "symbol": r.get("symbol"),
+                "targetPrice": r.get("target_price"),
+                "condition": r.get("condition"),
+                "triggered": r.get("triggered")
+            })
+        return {"alerts": alerts}
+    except Exception as e:
+        print(f"Error fetching alerts from Supabase: {e}")
+        return {"alerts": []}
 
 
 @app.post("/api/alerts/sync")
-async def sync_alerts(body: dict):
-    """
-    Sync price alerts from the frontend.
-    Body: { "alerts": [...] }
-    """
+async def sync_alerts(request: Request, body: dict):
+    """Sync price alerts to Supabase."""
+    from services.supabase_client import supabase
+    session_id = request.headers.get("x-user-id", "default")
     alerts = body.get("alerts", [])
-
     if not isinstance(alerts, list):
         raise HTTPException(status_code=400, detail="alerts must be an array")
-
-    # Validate each alert
-    valid_alerts = []
-    for alert in alerts:
-        if all(k in alert for k in ("id", "symbol", "targetPrice", "condition")):
-            valid_alerts.append({
-                "id": str(alert["id"]),
-                "symbol": str(alert["symbol"]).upper(),
-                "targetPrice": float(alert["targetPrice"]),
-                "condition": alert["condition"] if alert["condition"] in ("above", "below") else "above",
-                "triggered": bool(alert.get("triggered", False)),
-            })
-
+    
+    if not supabase: return {"success": False, "message": "Supabase not connected"}
+    
     try:
-        ALERTS_FILE.write_text(
-            json.dumps(valid_alerts, indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
+        # Delete existing alerts for this session
+        supabase.table("price_alerts").delete().eq("session_id", session_id).execute()
+        
+        valid_alerts = []
+        for alert in alerts:
+            if all(k in alert for k in ("symbol", "targetPrice", "condition")):
+                valid_alerts.append({
+                    "session_id": session_id,
+                    "symbol": str(alert["symbol"]).upper(),
+                    "target_price": float(alert["targetPrice"]),
+                    "condition": alert["condition"] if alert["condition"] in ("above", "below") else "above",
+                    "triggered": bool(alert.get("triggered", False)),
+                })
+        
+        if valid_alerts:
+            supabase.table("price_alerts").insert(valid_alerts).execute()
+            
+        return {
+            "success": True,
+            "count": len(valid_alerts),
+            "message": f"Synced {len(valid_alerts)} alerts to Supabase"
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save alerts: {e}")
-
-    return {
-        "success": True,
-        "count": len(valid_alerts),
-        "message": f"Synced {len(valid_alerts)} alerts to backend",
-    }
+        raise HTTPException(status_code=500, detail=f"Failed to sync alerts to Supabase: {e}")
 
 
 @app.post("/api/alerts/check")
@@ -749,6 +740,9 @@ if __name__ == "__main__":
     import uvicorn
     import os
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), reload=False)
+
+
+
 
 
 
