@@ -44,7 +44,7 @@ export default function WatchlistPanel() {
             symbol: sym,
             price: p?.price || 0,
             change: p?.priceChange24h || 0,
-            score: screenerInfo?.score || 50,
+            score: screenerInfo?.quantScore ?? screenerInfo?.score ?? 50,
             signal: screenerInfo?.signal || 'Mantener'
           };
         });
@@ -197,4 +197,5 @@ function getSignalLabel(signal: string) {
   if (signal === 'Venta Fuerte') return 'STR SELL';
   return signal;
 }
+
 

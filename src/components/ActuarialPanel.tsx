@@ -22,7 +22,7 @@ function fmtPrice(p: number): string {
   return '$' + p.toFixed(6);
 }
 
-function MonteCarloChart({ paths, currentPrice }: { paths: { p10: number[]; p50: number[]; p90: number[] }; currentPrice: number }) {
+function MonteCarloChart({ paths }: { paths: { p10: number[]; p50: number[]; p90: number[] } }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -107,7 +107,7 @@ function MonteCarloChart({ paths, currentPrice }: { paths: { p10: number[]; p50:
       chart.remove();
       chartRef.current = null;
     };
-  }, [paths, currentPrice]);
+  }, [paths]);
 
   return <div className="w-full h-[160px]" ref={chartContainerRef} />;
 }
@@ -320,7 +320,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
           {/* Monte Carlo Cone Chart */}
           {paths && paths.p50 && paths.p50.length > 0 ? (
             <div className="mt-1 rounded-lg overflow-hidden border" style={{ borderColor: 'var(--bg-tertiary)' }}>
-              <MonteCarloChart paths={paths} currentPrice={currentPrice} />
+              <MonteCarloChart paths={paths} />
             </div>
           ) : (
             /* Fallback: Visual Range Bar */
@@ -450,6 +450,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
     </div>
   );
 }
+
 
 
 

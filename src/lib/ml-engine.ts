@@ -328,23 +328,24 @@ export function generateFullAnalysis(
     actionableData,
     ml: {
       prediction: { 
-        prediction: parseFloat((price * (1 + (Math.random() * 0.1 - 0.05))).toFixed(2)),
-        confidence: parseFloat((0.6 + Math.random() * 0.3).toFixed(2))
+        prediction: null,
+        confidence: 0
       },
       volume_anomaly: { 
-        anomaly: vol24h > (marketCap * 0.1)
+        anomaly: false,
+        description: "Sin conexión al motor"
       }
     },
     candlestickPatterns: {
-      engulfing: Math.random() > 0.5 ? 1 : 0,
-      doji: Math.random() > 0.8 ? 1 : 0,
-      hammer: Math.random() > 0.7 ? 1 : 0
+      engulfing: 0,
+      doji: 0,
+      hammer: 0
     },
     divergences: {
-      rsi_bullish: Math.random() > 0.8,
-      rsi_bearish: Math.random() > 0.8,
-      macd_bullish: Math.random() > 0.8,
-      macd_bearish: Math.random() > 0.8
+      rsi_bullish: false,
+      rsi_bearish: false,
+      macd_bullish: false,
+      macd_bearish: false
     },
     timestamp: new Date().toISOString(),
   };
@@ -359,3 +360,4 @@ function getMacroRiskText(score: number): string {
 }
 
 export { calculateFullScore as calculateMLScore };
+

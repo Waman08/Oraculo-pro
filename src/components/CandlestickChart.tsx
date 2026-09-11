@@ -1,7 +1,7 @@
-"use client";
+﻿"use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { createChart, IChartApi, ISeriesApi, Time, LineStyle } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, Time, LineStyle, IPriceLine } from 'lightweight-charts';
 import { fetchKlines } from '@/lib/api';
 import { useAppSettings } from './AppContext';
 import { useAppStore } from '@/lib/store';
@@ -17,11 +17,13 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const priceLinesRef = useRef<IPriceLine[]>([]);
+  const lastCandleRef = useRef<any>(null);
   
   const [loading, setLoading] = useState(true);
   const { timeframe } = useAppSettings();
+  const livePrice = useAppStore(state => state.livePrices[symbol]?.price);
 
-  // Convert timeframe to Binance interval
   const getInterval = (tf: string) => {
     switch(tf) {
       case '1S': return '1w';
@@ -33,10 +35,10 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     }
   };
 
+  // 1. Initialise Chart and fetch historical data (Depends on symbol, timeframe)
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    // Create Chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: 'solid' as any, color: 'transparent' },
@@ -46,23 +48,15 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
         vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
         horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
       },
-      crosshair: {
-        mode: 0,
-      },
-      timeScale: {
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-        timeVisible: true,
-      },
-      rightPriceScale: {
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-      },
+      crosshair: { mode: 0 },
+      timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true },
+      rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
       autoSize: true,
     });
     
     chartRef.current = chart;
 
-    // Add Candlestick Series
-    const candlestickSeries = (chart as any).addCandlestickSeries({
+    const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#10B981',
       downColor: '#EF4444',
       borderVisible: false,
@@ -71,55 +65,14 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     });
     seriesRef.current = candlestickSeries;
 
-    // Draw Support/Resistance Lines
-    if (actionableData) {
-      if (actionableData.optimalEntry) {
-        candlestickSeries.createPriceLine({
-          price: actionableData.optimalEntry,
-          color: '#3B82F6', // Blue for entry
-          lineWidth: 2,
-          lineStyle: LineStyle.Dashed,
-          axisLabelVisible: true,
-          title: 'Entry',
-        });
-      }
-      if (actionableData.takeProfit) {
-        candlestickSeries.createPriceLine({
-          price: actionableData.takeProfit,
-          color: '#10B981', // Green for TP
-          lineWidth: 2,
-          lineStyle: LineStyle.Dotted,
-          axisLabelVisible: true,
-          title: 'TP',
-        });
-      }
-      if (actionableData.stopLoss) {
-        candlestickSeries.createPriceLine({
-          price: actionableData.stopLoss,
-          color: '#EF4444', // Red for SL
-          lineWidth: 2,
-          lineStyle: LineStyle.Dotted,
-          axisLabelVisible: true,
-          title: 'SL',
-        });
-      }
-    }
-
-    // Add Volume Series
-    const volumeSeries = (chart as any).addHistogramSeries({
+    const volumeSeries = chart.addHistogramSeries({
       color: '#26a69a',
-      priceFormat: {
-        type: 'volume',
-      },
+      priceFormat: { type: 'volume' },
       priceScaleId: '', 
-      scaleMargins: {
-        top: 0.8,
-        bottom: 0,
-      },
+      scaleMargins: { top: 0.8, bottom: 0 },
     });
     volumeSeriesRef.current = volumeSeries;
 
-    // Fetch and Set Data
     let isMounted = true;
     const loadData = async () => {
       setLoading(true);
@@ -144,13 +97,13 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
 
         candlestickSeries.setData(cData);
         volumeSeries.setData(vData);
+        lastCandleRef.current = cData[cData.length - 1];
       }
       setLoading(false);
     };
 
     loadData();
 
-    // Resize Observer
     const handleResize = () => {
       if (chartContainerRef.current) {
         chart.applyOptions({ width: chartContainerRef.current.clientWidth });
@@ -163,8 +116,69 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       window.removeEventListener('resize', handleResize);
       chart.remove();
       chartRef.current = null;
+      seriesRef.current = null;
+      volumeSeriesRef.current = null;
+      priceLinesRef.current = [];
     };
-  }, [symbol, timeframe, actionableData]);
+  }, [symbol, timeframe]);
+
+  // 2. Update Price Lines when actionableData changes without destroying chart
+  useEffect(() => {
+    if (!seriesRef.current || !actionableData) return;
+
+    // Clear old lines
+    priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
+    priceLinesRef.current = [];
+
+    if (actionableData.optimalEntry) {
+      const line = seriesRef.current.createPriceLine({
+        price: actionableData.optimalEntry,
+        color: '#3B82F6',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: 'Entry',
+      });
+      priceLinesRef.current.push(line);
+    }
+    if (actionableData.takeProfit) {
+      const line = seriesRef.current.createPriceLine({
+        price: actionableData.takeProfit,
+        color: '#10B981',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: 'TP',
+      });
+      priceLinesRef.current.push(line);
+    }
+    if (actionableData.stopLoss) {
+      const line = seriesRef.current.createPriceLine({
+        price: actionableData.stopLoss,
+        color: '#EF4444',
+        lineWidth: 2,
+        lineStyle: LineStyle.Dotted,
+        axisLabelVisible: true,
+        title: 'SL',
+      });
+      priceLinesRef.current.push(line);
+    }
+  }, [actionableData]);
+
+  // 3. Update last candle live using websocket/livePrice updates
+  useEffect(() => {
+    if (livePrice && seriesRef.current && lastCandleRef.current) {
+      const currentLast = lastCandleRef.current;
+      const updatedCandle = {
+        ...currentLast,
+        close: livePrice,
+        high: Math.max(currentLast.high, livePrice),
+        low: Math.min(currentLast.low, livePrice)
+      };
+      seriesRef.current.update(updatedCandle);
+      lastCandleRef.current = updatedCandle;
+    }
+  }, [livePrice]);
 
   return (
     <div className="w-full h-full relative min-h-[280px] h-[350px] glass-card overflow-hidden">
@@ -175,12 +189,12 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       )}
       {!loading && (!seriesRef.current || chartContainerRef.current?.childNodes.length === 0) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10 backdrop-blur-sm text-[#94A3B8]">
-          <div className="text-4xl mb-2">📉</div>
+          <div className="text-4xl mb-2">📊</div>
           <div className="text-sm font-semibold">Datos del gráfico no disponibles</div>
           <div className="text-xs opacity-60">No se pudieron cargar velas de este activo</div>
         </div>
       )}
-      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1">
+      <div className="absolute top-4 left-4 z-10 flex flex-col gap-1 pointer-events-none">
          <div className="flex items-center gap-3">
            <div className="font-bold text-lg">{symbol}</div>
            <div className="text-sm text-gray-400 bg-black/40 px-2 py-1 rounded">{timeframe}</div>
@@ -199,6 +213,3 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     </div>
   );
 }
-
-
-
