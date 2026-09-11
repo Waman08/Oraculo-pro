@@ -305,7 +305,15 @@ export async function fetchKlines(
     );
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (e: any) {
+    if (e.name === "AbortError") {
+      useAppStore.getState().addToast({
+        title: "Conectando al Motor...",
+        message: "El servidor de IA est· despertando (Cold Start). Esto puede tomar hasta 50 segundos.",
+        type: "warning",
+        duration: 8000
+      });
+    }
     return null;
   }
 }
@@ -376,7 +384,7 @@ export async function fetchPythonAnalysis(
 ): Promise<any | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for Render wake up
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 60s timeout for Render wake up
 
     // Obtener UUID del usuario para personalizaci√≥n an√≥nima
     const userId = typeof window !== 'undefined' ? localStorage.getItem('user_uuid') : null;
@@ -396,8 +404,15 @@ export async function fetchPythonAnalysis(
 
     if (!res.ok) return null;
     return await res.json();
-  } catch {
-    // Backend unavailable ‚Äî silent fallback
+  } catch (e: any) {
+    if (e.name === "AbortError") {
+      useAppStore.getState().addToast({
+        title: "Conectando al Motor...",
+        message: "El servidor de IA est· despertando (Cold Start). Esto puede tomar hasta 50 segundos.",
+        type: "warning",
+        duration: 8000
+      });
+    }
     return null;
   }
 }
@@ -413,7 +428,7 @@ export async function fetchPythonScreener(
 ): Promise<any[] | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const userId = typeof window !== 'undefined' ? localStorage.getItem('user_uuid') : null;
     const headers: Record<string, string> = {};
@@ -432,7 +447,15 @@ export async function fetchPythonScreener(
 
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (e: any) {
+    if (e.name === "AbortError") {
+      useAppStore.getState().addToast({
+        title: "Conectando al Motor...",
+        message: "El servidor de IA est· despertando (Cold Start). Esto puede tomar hasta 50 segundos.",
+        type: "warning",
+        duration: 8000
+      });
+    }
     return null;
   }
 }
@@ -514,7 +537,7 @@ export async function fetchBacktestFromServer(
 ): Promise<any | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const res = await fetch(
       `${PYTHON_API_URL}/api/backtest?symbol=${symbol.toUpperCase()}&timeframe=${timeframe}&limit=${limit}`,
@@ -524,8 +547,17 @@ export async function fetchBacktestFromServer(
 
     if (!res.ok) return null;
     return await res.json();
-  } catch {
+  } catch (e: any) {
+    if (e.name === "AbortError") {
+      useAppStore.getState().addToast({
+        title: "Conectando al Motor...",
+        message: "El servidor de IA est· despertando (Cold Start). Esto puede tomar hasta 50 segundos.",
+        type: "warning",
+        duration: 8000
+      });
+    }
     return null;
   }
 }
+
 
