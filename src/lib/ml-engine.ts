@@ -328,7 +328,7 @@ export function generateFullAnalysis(
     actionableData,
     ml: {
       prediction: { 
-        prediction: null,
+      prediction: "neutral",
         confidence: 0
       },
       volume_anomaly: { 
@@ -360,4 +360,5 @@ function getMacroRiskText(score: number): string {
 }
 
 export { calculateFullScore as calculateMLScore };
+
 

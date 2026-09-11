@@ -26,7 +26,7 @@ import { BacktestChart } from './charts/BacktestChart';
 import LiquidityPanel from './LiquidityPanel';
 import SupplyDynamicsPanel from './SupplyDynamicsPanel';
 import StablecoinDashboard from './StablecoinDashboard';
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2 } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Database, Shield, Wallet } from 'lucide-react';
 import { wsManager } from '@/lib/websocket-manager';
 import { useAppStore } from '@/lib/store';
 
@@ -39,6 +39,7 @@ export default function Dashboard() {
 
   const [data, setData] = useState<MarketAnalysis | null>(null);
   const [searchInput, setSearchInput] = useState(symbol);
+  const [activeTab, setActiveTab] = useState<'terminal' | 'onchain' | 'actuarial' | 'portfolio'>('terminal');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [dataSource, setDataSource] = useState<'binance' | 'coingecko' | 'mock' | 'dexscreener'>('mock');
   const [engineSource, setEngineSource] = useState<'python' | 'js'>('js');
@@ -418,7 +419,7 @@ export default function Dashboard() {
             }}
           >
             {dataSource === 'binance' ? <Wifi size={10} /> 
-             : dataSource === 'coingecko' ? 'ðŸ¦Ž' 
+             : dataSource === 'coingecko' ? '??' 
              : dataSource === 'dexscreener' ? <Search size={10} />
              : <WifiOff size={10} />}
             {dataSource === 'binance' ? 'BINANCE' 
@@ -459,86 +460,152 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Score Gauge */}
-      <div className="flex justify-between items-center w-full max-w-lg mx-auto mb-4">
-        <ScoreGauge score={data.quantScore} signal={data.signal} />
-        <div data-html2canvas-ignore>
-          <ExportReport />
-        </div>
+      <div className="flex justify-center items-center w-full max-w-sm mx-auto mb-2 mt-4">
+         <ScoreGauge score={data.quantScore} signal={data.signal} size={160} />
+         <div data-html2canvas-ignore className="ml-4">
+           <ExportReport />
+         </div>
       </div>
 
-      <BacktestBadge />
-
-      {/* Server-Side Backtest: Equity Curve Chart */}
-      {backtestData && backtestData.equity_curve && backtestData.equity_curve.length > 0 && (
-        <BacktestChart data={backtestData} />
-      )}
-
-      {/* Macro Risk Alert */}
-      <div
-        className="glass-card p-4 flex items-start gap-3 animate-fadeInUp"
-        style={{
-          borderLeft: `3px solid ${data.quantScore <= 40 ? 'var(--signal-buy)' : data.quantScore >= 60 ? 'var(--signal-sell)' : 'var(--accent-gold)'}`,
-        }}
-      >
-        <AlertTriangle size={16} style={{ color: 'var(--accent-gold)', marginTop: '2px', flexShrink: 0 }} />
-        <div>
-          <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-            {t('action.macroRisk')}
-          </div>
-          <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
-            {t(data.actionableData.macroRisk)}
-          </div>
-        </div>
+      {/* TAB NAVIGATION */}
+      <div className="flex w-full border-b overflow-x-auto gap-4 px-2 mt-4 mb-6" style={{ borderColor: 'var(--bg-tertiary)' }}>
+        <button
+          onClick={() => setActiveTab('terminal')}
+          className={`flex items-center gap-2 pb-3 px-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'terminal' ? 'border-[var(--accent-gold)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          <LineChart size={16} /> <span className="text-sm font-semibold">Terminal</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('onchain')}
+          className={`flex items-center gap-2 pb-3 px-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'onchain' ? 'border-[var(--accent-gold)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          <Database size={16} /> <span className="text-sm font-semibold">On-Chain & Oferta</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('actuarial')}
+          className={`flex items-center gap-2 pb-3 px-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'actuarial' ? 'border-[var(--accent-gold)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          <Shield size={16} /> <span className="text-sm font-semibold">Riesgo Actuarial</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('portfolio')}
+          className={`flex items-center gap-2 pb-3 px-2 border-b-2 transition-colors whitespace-nowrap ${activeTab === 'portfolio' ? 'border-[var(--accent-gold)] text-[var(--text-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+        >
+          <Wallet size={16} /> <span className="text-sm font-semibold">Portafolio & Alertas</span>
+        </button>
       </div>
 
-      {/* Chart and Watchlist Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div className="lg:col-span-3">
+      {/* TAB CONTENT: TERMINAL */}
+      <div className={activeTab === 'terminal' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
+        <BacktestBadge />
+
+        {/* Server-Side Backtest: Equity Curve Chart */}
+        {backtestData && backtestData.equity_curve && backtestData.equity_curve.length > 0 && (
+          <BacktestChart data={backtestData} />
+        )}
+
+        {/* Macro Risk Alert */}
+        {data.actionableData?.macroRisk && data.actionableData.macroRisk !== 'macrorisk.floor' && (
+          <div
+            className="glass-card p-4 flex items-start gap-3"
+            style={{
+              borderLeft: `3px solid ${data.quantScore <= 40 ? 'var(--signal-buy)' : data.quantScore >= 60 ? 'var(--signal-sell)' : 'var(--accent-gold)'}`,
+            }}
+          >
+            <AlertTriangle size={16} style={{ color: 'var(--accent-gold)', marginTop: '2px', flexShrink: 0 }} />
+            <div>
+              <div className="text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
+                {t('action.macroRisk')}
+              </div>
+              <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
+                {t(data.actionableData.macroRisk)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full">
           <CandlestickChart symbol={data.symbol} actionableData={data.actionableData} />
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-6">
-          <WatchlistPanel />
-          <PortfolioTracker />
-          <AlertsPanel />
+
+        <div className="w-full">
+          <IndicatorGrid breakdown={breakdown} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <DCAPanel
+            actionableData={data.actionableData}
+            currentPrice={data.currentPrice}
+          />
+          <SmartMoneyPanel smartMoney={data.smartMoney} currentPrice={data.currentPrice} />
+          <LiquidityPanel liquidity={data.liquidity} />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SentimentPanel sentiment={data.sentiment} macro={data.macro} />
+          <AIPanel data={data} />
         </div>
       </div>
 
-      {/* Main Grid: Score Breakdown + DCA + Smart Money + Liquidity  */}
-      <div className="w-full">
-        <IndicatorGrid breakdown={breakdown} />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <DCAPanel
-          actionableData={data.actionableData}
-          currentPrice={data.currentPrice}
-        />
-        <SmartMoneyPanel smartMoney={data.smartMoney} currentPrice={data.currentPrice} />
-        <LiquidityPanel liquidity={data.liquidity} />
+      {/* TAB CONTENT: ON-CHAIN & OFERTA */}
+      <div className={activeTab === 'onchain' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
+        <div className="mt-2">
+          <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Inteligencia On-Chain
+          </h2>
+          <OnChainDashboard symbol={data.symbol} onSymbolChange={setSymbol} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <SupplyDynamicsPanel supplyData={data.supplyDynamics} />
+          <StablecoinDashboard stablecoinData={data.stablecoinAnalysis} />
+        </div>
       </div>
 
-      {/* Actuarial Risk Panel â€” Full Width */}
-      <ActuarialPanel actuarial={data.actuarial} currentPrice={data.currentPrice} />
-
-      {/* Bottom Grid: Sentiment + AI */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SentimentPanel sentiment={data.sentiment} macro={data.macro} />
-        <AIPanel data={data} />
+      {/* TAB CONTENT: RIESGO ACTUARIAL */}
+      <div className={activeTab === 'actuarial' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
+        <ActuarialPanel actuarial={data.actuarial} currentPrice={data.currentPrice} />
+        
+        {data.actionableData?.positionSizing && data.actionableData.positionSizing.recommendedSizeUSD > 0 && (
+          <div className="glass-card p-5 border relative overflow-hidden" style={{ borderColor: 'var(--accent-gold)', background: 'rgba(251, 191, 36, 0.03)' }}>
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Shield size={64} style={{ color: 'var(--accent-gold)' }} />
+            </div>
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--accent-gold)' }}>
+              <Shield size={20} /> Position Sizing (Grado Institucional)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>Tamaño Recomendado</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${data.actionableData.positionSizing.recommendedSizeUSD}</span>
+              </div>
+              <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>% del Portafolio</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{data.actionableData.positionSizing.portfolioPct}%</span>
+              </div>
+              <div className="p-4 rounded-xl border border-[var(--signal-sell-dim)]" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--signal-sell)' }}>Pérdida Máxima Tolerable (VaR 95%)</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--signal-sell)' }}>${data.actionableData.positionSizing.maxRiskUSD}</span>
+              </div>
+            </div>
+            <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
+              Basado en el Criterio de <strong>Fractional Kelly</strong> (crecimiento compuesto) y limitado por el <strong>Value at Risk (VaR 95%)</strong> del modelo estocástico sobre un portafolio simulado de $10,000 USD.
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* On-Chain Dashboard (MVP v2) â€” Full Width */}
-      <div className="mt-8">
-        <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-          Inteligencia On-Chain
-        </h2>
-        <OnChainDashboard symbol={data.symbol} onSymbolChange={setSymbol} />
+      {/* TAB CONTENT: PORTAFOLIO & ALERTAS */}
+      <div className={activeTab === 'portfolio' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 w-full animate-fadeInUp' : 'hidden'}>
+        <div className="flex flex-col gap-6">
+          <WatchlistPanel />
+          <AlertsPanel />
+        </div>
+        <div className="flex flex-col gap-6">
+          <PortfolioTracker />
+        </div>
       </div>
 
-      {/* New Panels: Supply Dynamics & Stablecoins */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-        <SupplyDynamicsPanel supplyData={data.supplyDynamics} />
-        <StablecoinDashboard stablecoinData={data.stablecoinAnalysis} />
-      </div>
     </div>
   );
 }
@@ -550,6 +617,8 @@ function formatPrice(price: number): string {
   if (price >= 0.01) return price.toFixed(4);
   return price.toFixed(8);
 }
+
+
 
 
 

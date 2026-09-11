@@ -1,3 +1,4 @@
+import { useAppStore } from '@/lib/store';
 // ============================================================
 // API — Multi-Exchange: Binance (primario) + CoinGecko (fallback)
 // ============================================================
@@ -559,5 +560,7 @@ export async function fetchBacktestFromServer(
     return null;
   }
 }
+
+
 
 

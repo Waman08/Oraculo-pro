@@ -185,6 +185,11 @@ export interface DCALevel {
 // ---- Análisis Completo ----
 
 export interface ActionableData {
+  positionSizing?: {
+    recommendedSizeUSD: number;
+    portfolioPct: number;
+    maxRiskUSD: number;
+  };
   optimalEntry: number;
   dcaLevels: DCALevel[];
   takeProfit: number;
@@ -337,4 +342,5 @@ export const SIGNAL_LABELS: Record<Signal, string> = {
   'Venta': '🟠 Venta',
   'Venta Fuerte': '🔴 Venta Fuerte',
 };
+
 

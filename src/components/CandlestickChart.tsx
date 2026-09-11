@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, Time, LineStyle, IPriceLine } from 'lightweight-charts';
@@ -69,8 +69,8 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       color: '#26a69a',
       priceFormat: { type: 'volume' },
       priceScaleId: '', 
-      scaleMargins: { top: 0.8, bottom: 0 },
     });
+    chart.priceScale('').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
     volumeSeriesRef.current = volumeSeries;
 
     let isMounted = true;
@@ -189,8 +189,8 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       )}
       {!loading && (!seriesRef.current || chartContainerRef.current?.childNodes.length === 0) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10 backdrop-blur-sm text-[#94A3B8]">
-          <div className="text-4xl mb-2">📊</div>
-          <div className="text-sm font-semibold">Datos del gráfico no disponibles</div>
+          <div className="text-4xl mb-2">??</div>
+          <div className="text-sm font-semibold">Datos del gr�fico no disponibles</div>
           <div className="text-xs opacity-60">No se pudieron cargar velas de este activo</div>
         </div>
       )}
@@ -213,3 +213,4 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     </div>
   );
 }
+
