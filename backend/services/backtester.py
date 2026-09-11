@@ -45,7 +45,7 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
     # 2. MACD Trend (Bullish = 1, Bearish = 0)
     # 3. EMA Trend (Bullish = 1, Bearish = 0)
     
-    df['rsi_score'] = df['rsi'].clip(0, 100)
+    df['rsi_score'] = 100 - df['rsi'].clip(0, 100)
     df['macd_bull'] = (df['macd'] > df['macd_signal']).astype(int) * 100
     df['ema_bull'] = (df['ema_short'] > df['ema_long']).astype(int) * 100
     
@@ -54,8 +54,8 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
 
     # Reglas de Entrada/Salida
     df['signal'] = 0
-    df.loc[df['quant_score_proxy'] > 60, 'signal'] = 1
-    df.loc[df['quant_score_proxy'] < 40, 'signal'] = -1
+    df.loc[df['quant_score_proxy'] > 55, 'signal'] = 1
+    df.loc[df['quant_score_proxy'] < 45, 'signal'] = -1
 
     # Operar en la próxima vela para evitar look-ahead bias
     df['position'] = df['signal'].shift(1)
@@ -160,3 +160,4 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
         "trades": trades,
         "equity_curve": equity_series
     }
+

@@ -37,21 +37,21 @@ MODE_WEIGHTS = {
 }
 
 THRESHOLDS = {
-    "Seguro": {"buyStrong": 15, "buy": 30, "sell": 55, "sellStrong": 70},
-    "Balanceado": {"buyStrong": 20, "buy": 40, "sell": 60, "sellStrong": 80},
-    "Agresivo": {"buyStrong": 30, "buy": 45, "sell": 70, "sellStrong": 85},
+    "Seguro": {"sellStrong": 20, "sell": 40, "buy": 60, "buyStrong": 80},
+    "Balanceado": {"sellStrong": 25, "sell": 45, "buy": 55, "buyStrong": 75},
+    "Agresivo": {"sellStrong": 30, "sell": 50, "buy": 50, "buyStrong": 70},
 }
 
 
 def get_signal(score: float, mode: str) -> str:
     t = THRESHOLDS.get(mode, THRESHOLDS["Balanceado"])
-    if score <= t["buyStrong"]:
+    if score >= t["buyStrong"]:
         return "Compra Fuerte"
-    if score <= t["buy"]:
+    if score >= t["buy"]:
         return "Compra"
-    if score >= t["sellStrong"]:
+    if score <= t["sellStrong"]:
         return "Venta Fuerte"
-    if score >= t["sell"]:
+    if score <= t["sell"]:
         return "Venta"
     return "Mantener"
 
@@ -93,9 +93,14 @@ def score_momentum(indicators: Dict):
     stoch_data = indicators.get("stochastic", {})
     stoch = (_safe_val(stoch_data.get("k"), 50.0) + _safe_val(stoch_data.get("d"), 50.0)) / 2
     macd_hist = _safe_val(indicators.get("macd", {}).get("hist"), 0.0)
-    macd_score = 30 if macd_hist > 0 else (70 if macd_hist < 0 else 50)
     
-    total = rsi * 0.50 + stoch * 0.30 + macd_score * 0.20
+    # 0 to 100 where 100 = Bullish
+    # Mean Reversion: RSI < 30 is Buy (Score 70+), RSI > 70 is Sell (Score < 30)
+    inverted_rsi = 100 - rsi
+    inverted_stoch = 100 - stoch
+    macd_score = 75 if macd_hist > 0 else (25 if macd_hist < 0 else 50)
+    
+    total = inverted_rsi * 0.40 + inverted_stoch * 0.30 + macd_score * 0.30
     score = max(0, min(100, total))
     
     macd_val_str = f"{macd_hist/1000:.1f}k" if abs(macd_hist) >= 1000 else f"{macd_hist:.2f}"
@@ -121,13 +126,21 @@ def score_trend(indicators: Dict, price: float):
 
     adx = _safe_val(indicators.get("adx"), 25.0)
     st_dir = indicators.get("supertrend", {}).get("direction", "up")
+    st_score = 100 if st_dir == "up" else 0
+    
+    # ADX measures trend strength. If trend is UP, strong ADX pushes score higher.
+    # If trend is DOWN, strong ADX pushes score lower.
+    if st_dir == "up":
+        adx_score = 50 + (min(adx, 50) / 50) * 50
+    else:
+        adx_score = 50 - (min(adx, 50) / 50) * 50
 
-    total = ema_score * 0.50 + adx * 0.25 + (100 if st_dir == "up" else 0) * 0.25
+    total = ema_score * 0.40 + st_score * 0.40 + adx_score * 0.20
     score = max(0, min(100, total))
     
     details = [
         {"name": "EMAs (20,50,200)", "value": f"{ema_count}/3", "signal": "Buy" if ema_count >= 2 else "Sell" if ema_count <= 1 else "Neutral"},
-        {"name": "ADX", "value": f"{adx:.1f}", "signal": "Neutral" if adx < 25 else "Buy" if st_dir == "up" else "Sell"},
+        {"name": "ADX", "value": f"{adx:.1f}", "signal": "Buy" if (adx >= 25 and st_dir == "up") else "Sell" if (adx >= 25 and st_dir == "down") else "Neutral"},
         {"name": "SuperTrend", "value": st_dir.upper(), "signal": "Buy" if st_dir == "up" else "Sell"}
     ]
     return score, details
@@ -686,8 +699,8 @@ async def run_analysis(
         stop_loss = _smart_round(price - atr * 3)
     elif signal in ("Venta Fuerte", "Venta"):
         optimal_entry = _smart_round(price + atr * 0.5)
-        take_profit = _smart_round(price + atr * 3)
-        stop_loss = _smart_round(price - atr * 1.5)
+        take_profit = _smart_round(price - atr * 3.0)
+        stop_loss = _smart_round(price + atr * 1.5)
     else:
         optimal_entry = _smart_round(price)
         take_profit = _smart_round(price + atr * 2)

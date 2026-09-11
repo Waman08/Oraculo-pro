@@ -114,7 +114,10 @@ async def get_signals_index(symbol: str) -> dict:
         trend_str = max(0, min(100, trend * 2))
         
         # 6. Volatility Index (ATR normalized)
-        vol = max(0, min(100, random.uniform(30, 70))) # We can use ATR, but keeping it simple for speed
+        atr = ind.get("atr", 0)
+        price = data.get("currentPrice", 1)
+        vol_pct = (atr / price) * 100 if price > 0 else 0
+        vol = max(0, min(100, vol_pct * 10)) # map 0-10% daily vol to 0-100
         
         # 7 & 8. Buy / Sell Pressure
         buy_p = max(0, min(100, cmf_score * 0.8 + mom * 0.2))
@@ -126,7 +129,7 @@ async def get_signals_index(symbol: str) -> dict:
         
         return {
             "signalsIndex": round(master, 1),
-            "signal": "Buy" if master > 60 else "Sell" if master < 40 else "Neutral",
+            "signal": "Compra Fuerte" if master >= 75 else "Compra" if master > 55 else "Venta Fuerte" if master <= 25 else "Venta" if master < 45 else "Neutral",
             "subSignals": {
                 "whaleAccumulation": round(cmf_score, 1),
                 "leverageRatio": round(leverage, 1),
@@ -141,6 +144,7 @@ async def get_signals_index(symbol: str) -> dict:
     except Exception as e:
         print(f"Error building Quant Signals Index: {e}")
         return {"signalsIndex": 50, "subSignals": {}}
+
 
 
 
