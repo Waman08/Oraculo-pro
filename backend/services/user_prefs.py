@@ -1,4 +1,4 @@
-﻿import json
+import json
 from typing import Dict, Any
 from services.supabase_client import supabase
 
@@ -45,4 +45,4 @@ def save_user_prefs(session_id: str, prefs: Dict[str, Any]) -> bool:
         return True
     except Exception as e:
         print(f"[WARN] Error saving user_prefs to Supabase: {e}")
-        return False
+        return False

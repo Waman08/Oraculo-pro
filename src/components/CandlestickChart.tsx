@@ -190,7 +190,7 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       {!loading && (!seriesRef.current || chartContainerRef.current?.childNodes.length === 0) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10 backdrop-blur-sm text-[#94A3B8]">
           <div className="text-4xl mb-2">??</div>
-          <div className="text-sm font-semibold">Datos del gr·fico no disponibles</div>
+          <div className="text-sm font-semibold">Datos del gr√°fico no disponibles</div>
           <div className="text-xs opacity-60">No se pudieron cargar velas de este activo</div>
         </div>
       )}
@@ -212,5 +212,5 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       </div>
     </div>
   );
-}
-
+}
+

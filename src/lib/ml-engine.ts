@@ -1,5 +1,5 @@
 // ============================================================
-// MOTOR ML — Weighted Scoring Algorítmico Completo
+// MOTOR ML â Weighted Scoring AlgorÃ­tmico Completo
 // ============================================================
 
 import type {
@@ -18,8 +18,8 @@ import { getSignalFromScore, THRESHOLDS } from './scoring-utils';
 export { getSignalFromScore } from './scoring-utils';
 
 // ---- Pesos del Motor POR MODO DE RIESGO ----
-// Seguro: más peso a on-chain y sentimiento (largo plazo)
-// Agresivo: más peso a momentum (corto plazo)
+// Seguro: mÃ¡s peso a on-chain y sentimiento (largo plazo)
+// Agresivo: mÃ¡s peso a momentum (corto plazo)
 
 const MODE_WEIGHTS: Record<RiskMode, { momentum: number; trend: number; sentiment: number; onChain: number }> = {
   Seguro: { momentum: 0.20, trend: 0.25, sentiment: 0.20, onChain: 0.35 },
@@ -30,7 +30,7 @@ const MODE_WEIGHTS: Record<RiskMode, { momentum: number; trend: number; sentimen
 // Umbrales importados de scoring-utils
 // THRESHOLDS ya importado arriba
 
-// ---- Cálculos de Score por Categoría ----
+// ---- CÃ¡lculos de Score por CategorÃ­a ----
 
 function scoreMomentum(ind: FullIndicatorSet): { score: number; details: IndicatorScore[] } {
   const details: IndicatorScore[] = [];
@@ -44,10 +44,10 @@ function scoreMomentum(ind: FullIndicatorSet): { score: number; details: Indicat
     signal: ind.rsi < 30 ? 'bullish' : ind.rsi > 70 ? 'bearish' : 'neutral',
   });
 
-  // Estocástico
+  // EstocÃ¡stico
   const stochScore = (ind.stochastic.k + ind.stochastic.d) / 2;
   details.push({
-    name: 'Estocástico',
+    name: 'EstocÃ¡stico',
     value: `K:${ind.stochastic.k.toFixed(1)} D:${ind.stochastic.d.toFixed(1)}`,
     contribution: stochScore * 0.30,
     signal: stochScore < 20 ? 'bullish' : stochScore > 80 ? 'bearish' : 'neutral',
@@ -70,14 +70,14 @@ function scoreMomentum(ind: FullIndicatorSet): { score: number; details: Indicat
 function scoreTrend(ind: FullIndicatorSet, price: number): { score: number; details: IndicatorScore[] } {
   const details: IndicatorScore[] = [];
 
-  // EMA Stack: si precio está SOBRE las EMAs → mercado alcista → score alto (venta)
+  // EMA Stack: si precio estÃ¡ SOBRE las EMAs â mercado alcista â score alto (venta)
   const aboveEma20 = price > ind.ema20;
   const aboveEma50 = price > ind.ema50;
   const aboveEma200 = price > ind.ema200;
   const emaStackScore = (aboveEma20 ? 25 : 0) + (aboveEma50 ? 25 : 0) + (aboveEma200 ? 25 : 0);
   details.push({
     name: 'EMA Stack',
-    value: `${aboveEma20 ? '✓' : '✗'}20 ${aboveEma50 ? '✓' : '✗'}50 ${aboveEma200 ? '✓' : '✗'}200`,
+    value: `${aboveEma20 ? 'â' : 'â'}20 ${aboveEma50 ? 'â' : 'â'}50 ${aboveEma200 ? 'â' : 'â'}200`,
     contribution: emaStackScore * 0.35,
     signal: emaStackScore > 50 ? 'bearish' : emaStackScore < 25 ? 'bullish' : 'neutral',
   });
@@ -95,7 +95,7 @@ function scoreTrend(ind: FullIndicatorSet, price: number): { score: number; deta
   const stScore = ind.supertrend.direction === 'up' ? 70 : 30;
   details.push({
     name: 'Supertrend',
-    value: ind.supertrend.direction === 'up' ? '▲ Alcista' : '▼ Bajista',
+    value: ind.supertrend.direction === 'up' ? 'â² Alcista' : 'â¼ Bajista',
     contribution: stScore * 0.20,
     signal: ind.supertrend.direction === 'up' ? 'bearish' : 'bullish',
   });
@@ -174,7 +174,7 @@ function scoreOnChain(oc: OnChainData): { score: number; details: IndicatorScore
   return { score: Math.min(100, Math.max(0, totalScore)), details };
 }
 
-// ---- Cálculo Principal del Score ----
+// ---- CÃ¡lculo Principal del Score ----
 
 export function calculateFullScore(
   indicators: FullIndicatorSet,
@@ -213,7 +213,7 @@ function calculateDCA(price: number, signal: Signal, atr: number): DCALevel[] {
   const levels: DCALevel[] = [];
 
   if (signal === 'Compra Fuerte' || signal === 'Compra') {
-    // DCA de compra hacia abajo — promediar más barato
+    // DCA de compra hacia abajo â promediar mÃ¡s barato
     const steps = signal === 'Compra Fuerte' ? 5 : 3;
     for (let i = 1; i <= steps; i++) {
       const pct = i * 0.05;
@@ -227,7 +227,7 @@ function calculateDCA(price: number, signal: Signal, atr: number): DCALevel[] {
       });
     }
   } else if (signal === 'Venta Fuerte' || signal === 'Venta') {
-    // DCA de venta hacia arriba — take profits escalonados
+    // DCA de venta hacia arriba â take profits escalonados
     const steps = signal === 'Venta Fuerte' ? 5 : 3;
     for (let i = 1; i <= steps; i++) {
       const pct = i * 0.05;
@@ -245,7 +245,7 @@ function calculateDCA(price: number, signal: Signal, atr: number): DCALevel[] {
   return levels;
 }
 
-// ---- Generar Análisis Completo ----
+// ---- Generar AnÃ¡lisis Completo ----
 
 export function generateFullAnalysis(
   symbol: string,
@@ -272,18 +272,18 @@ export function generateFullAnalysis(
   const signal = getSignalFromScore(breakdown.total, mode);
   const dcaLevels = calculateDCA(price, signal, indicators.atr);
 
-  // Entry, TP, SL basados en ATR y señal
+  // Entry, TP, SL basados en ATR y seÃ±al
   let optimalEntry: number;
   let takeProfit: number;
   let stopLoss: number;
 
   if (signal === 'Compra Fuerte' || signal === 'Compra') {
-    // Para compra: entrada más abajo, SL más abajo aún, TP arriba
+    // Para compra: entrada mÃ¡s abajo, SL mÃ¡s abajo aÃºn, TP arriba
     optimalEntry = parseFloat((price - indicators.atr * 1.5).toFixed(2));
     takeProfit = parseFloat((price + indicators.atr * 3).toFixed(2));
     stopLoss = parseFloat((price - indicators.atr * 3).toFixed(2));
   } else if (signal === 'Venta Fuerte' || signal === 'Venta') {
-    // Para venta: entrada más arriba, TP arriba, SL cercano
+    // Para venta: entrada mÃ¡s arriba, TP arriba, SL cercano
     optimalEntry = parseFloat((price + indicators.atr * 0.5).toFixed(2));
     takeProfit = parseFloat((price + indicators.atr * 3).toFixed(2));
     stopLoss = parseFloat((price - indicators.atr * 1.5).toFixed(2));
@@ -296,10 +296,10 @@ export function generateFullAnalysis(
 
   // Risk level: 1 (muy seguro) to 5 (muy riesgoso)
   let riskLevel: number;
-  if (breakdown.total <= 20 || breakdown.total >= 80) riskLevel = 1; // Señal clara
+  if (breakdown.total <= 20 || breakdown.total >= 80) riskLevel = 1; // SeÃ±al clara
   else if (breakdown.total <= 30 || breakdown.total >= 70) riskLevel = 2;
   else if (breakdown.total <= 40 || breakdown.total >= 60) riskLevel = 3;
-  else riskLevel = 4; // Zona indecisa = más riesgo
+  else riskLevel = 4; // Zona indecisa = mÃ¡s riesgo
 
   const actionableData: ActionableData = {
     optimalEntry,
@@ -333,7 +333,7 @@ export function generateFullAnalysis(
       },
       volume_anomaly: { 
         anomaly: false,
-        description: "Sin conexi�n al motor"
+        description: "Sin conexión al motor"
       }
     },
     candlestickPatterns: {
@@ -360,5 +360,5 @@ function getMacroRiskText(score: number): string {
 }
 
 export { calculateFullScore as calculateMLScore };
-
-
+
+
