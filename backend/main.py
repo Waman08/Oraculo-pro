@@ -28,6 +28,11 @@ from services.supply_dynamics import get_supply_data
 # AUDIT FIX: whale_tracker removed (was 100% fake random data)
 from services.user_prefs import get_user_prefs, save_user_prefs
 
+from services.telegram import TelegramSender, _escape_html
+from services.supabase_client import supabase
+from services.liquidity_engine import fetch_funding_rate
+
+
 import api_public
 
 # ---- Cache ----
@@ -108,6 +113,96 @@ async def screener_updater_loop():
                                 "rsi": analysis["rsi"],
                                 "ts": time.time()
                             }
+                            
+                            # === ALPHA CONFLUENCE PUSH ALERTS ===
+                            score = analysis["quantScore"]
+                            rsi = analysis["rsi"]
+                            vol_anom = analysis.get("volume_anomaly", False)
+                            
+                            is_strong_buy = (score >= 75 and rsi < 35 and vol_anom)
+                            is_strong_sell = (score <= 25 and rsi > 65 and vol_anom)
+                            
+                            if is_strong_buy or is_strong_sell:
+                                signal_type = "Compra Fuerte" if is_strong_buy else "Venta Fuerte"
+                                price = analysis.get("price", 0.0)
+                                change = analysis.get("change_24h", 0.0)
+                                
+                                # Check cooldown in Supabase (last 6 hours)
+                                cooldown_passed = True
+                                if supabase:
+                                    try:
+                                        from datetime import datetime, timedelta, timezone
+                                        six_hours_ago = (datetime.now(timezone.utc) - timedelta(hours=6)).isoformat()
+                                        res = supabase.table("signal_history")                                            .select("id")                                            .eq("symbol", sym)                                            .eq("signal", signal_type)                                            .gte("created_at", six_hours_ago)                                            .execute()
+                                        if res.data and len(res.data) > 0:
+                                            cooldown_passed = False
+                                    except Exception as e:
+                                        print(f"[Alpha] DB check error for {sym}: {e}")
+                                        
+                                if cooldown_passed:
+                                    fr_data = await fetch_funding_rate(sym)
+                                    funding_rate = fr_data.get("fundingRate", 0.0)
+                                    squeeze_text = ""
+                                    if is_strong_buy and funding_rate < -0.01:
+                                        squeeze_text = " (Riesgo Short Squeeze ⚠️)"
+                                    elif is_strong_sell and funding_rate > 0.01:
+                                        squeeze_text = " (Riesgo Long Squeeze ⚠️)"
+                                        
+                                    atr = analysis.get("indicators", {}).get("atr", 0.0)
+                                    if atr == 0: atr = price * 0.02
+                                    
+                                    if is_strong_buy:
+                                        sl = price - (atr * 1.5)
+                                        tp = price + (atr * 3.0)
+                                    else:
+                                        sl = price + (atr * 1.5)
+                                        tp = price - (atr * 3.0)
+                                        
+                                    change_sign = "+" if change >= 0 else ""
+                                    emoji = "🟢" if is_strong_buy else "🔴"
+                                    
+                                    msg = (
+                                        f"🚨 <b>ALERTA DE CONFLUENCIA ALFA</b>\n\n"
+                                        f"<b>{sym}</b> {emoji}\n"
+                                        f"Precio: <code>${price:,.2f}</code> ({change_sign}{change:.2f}%)\n"
+                                        f"Score: <code>{score:.1f}/100</code> - {signal_type}\n\n"
+                                        f"<b>🔥 Confluencias:</b>\n"
+                                        f"✅ Volumen Anómalo Detectado\n"
+                                        f"✅ RSI Extremo ({rsi:.1f})\n"
+                                        f"✅ Score Cuantitativo Alineado\n"
+                                    )
+                                    if squeeze_text:
+                                        msg += f"✅ Funding Rate: {funding_rate:.4f}% {squeeze_text}\n"
+                                        
+                                    msg += (
+                                        f"\n<b>🎯 Niveles Sugeridos:</b>\n"
+                                        f"Entrada: <code>${price:,.2f}</code>\n"
+                                        f"Take Profit: <code>${tp:,.2f}</code>\n"
+                                        f"Stop Loss: <code>${sl:,.2f}</code>\n\n"
+                                        f"<a href='https://oraculo-pro.vercel.app'>Ver en Dashboard Web</a>"
+                                    )
+                                    
+                                    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+                                    if bot_token and supabase:
+                                        # Get all active chats
+                                        chats_res = supabase.table("telegram_config").select("chat_id").execute()
+                                        if chats_res.data:
+                                            chats = set([r["chat_id"] for r in chats_res.data])
+                                            sender = TelegramSender(bot_token, "")
+                                            for c in chats:
+                                                await sender.send_message(msg, parse_mode="HTML", chat_id=c)
+                                            
+                                            # Register in DB
+                                            supabase.table("signal_history").insert({
+                                                "symbol": sym,
+                                                "signal": signal_type,
+                                                "score": score,
+                                                "price": price,
+                                                "timeframe": "1D",
+                                                "risk_mode": "Alpha"
+                                            }).execute()
+                                            print(f"[Alpha] Alert sent and logged for {sym}")
+                            
                             return True
                     except Exception as e:
                         import traceback; print(f"\[Screener Loop\] Error analyzing {sym}:\n{traceback.format_exc()}")

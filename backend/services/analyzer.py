@@ -805,12 +805,19 @@ async def run_screener_analysis_fast(
 
     signal = get_signal(total, mode)
     rsi = round(_safe_val(indicators.get("rsi"), 50.0), 1)
+    
+    # Calculate volume anomaly for screener
+    from services.volume_anomaly import detect_volume_anomaly
+    vol_anom = detect_volume_anomaly(df)
 
     return {
         "quantScore": total,
         "signal": signal,
         "rsi": rsi,
         "indicators": indicators,
+        "volume_anomaly": vol_anom.get("anomaly", False),
+        "price": price,
+        "change_24h": ticker.get("priceChangePercent", 0.0)
     }
 
 
