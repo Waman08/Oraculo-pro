@@ -1002,7 +1002,7 @@ export default function Dashboard() {
 
         {/* Server-Side Backtest: Equity Curve Chart */}
 
-        {selectedSymbol && <BacktestChart symbol={selectedSymbol} />}
+        {symbol && <BacktestChart symbol={symbol} />}
 
 
 
