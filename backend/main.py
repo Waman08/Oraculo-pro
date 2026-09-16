@@ -429,7 +429,9 @@ async def analyze(
 async def backtest(
     symbol: str = Query(..., description="Symbol to backtest (e.g., BTC)"),
     timeframe: str = Query("1D", description="Timeframe: 1D, 4H, 1H, etc."),
-    limit: int = Query(500, description="Number of historical candles to fetch")
+    days: int = Query(90, description="Number of historical days"),
+    mode: str = Query("Balanceado", description="Risk mode"),
+    feeRate: float = Query(0.1, description="Fee rate percentage")
 ):
     """
     Run a simulated trading strategy on historical data.
@@ -443,6 +445,11 @@ async def backtest(
             detail=f"Symbol {symbol} not supported.",
         )
         
+    if timeframe == "1D": limit = days
+    elif timeframe == "4H": limit = days * 6
+    elif timeframe == "1H": limit = days * 24
+    else: limit = days
+
     df = await fetch_klines(symbol, timeframe=timeframe, limit=limit)
     if df is None or df.empty:
         raise HTTPException(
@@ -450,7 +457,7 @@ async def backtest(
             detail=f"Failed to fetch historical data for {symbol}.",
         )
         
-    results = run_backtest(df)
+    results = run_backtest(df, mode=mode, fee_rate=feeRate / 100.0)
     
     if "error" in results:
         raise HTTPException(

@@ -1,24 +1,14 @@
 import pandas as pd
-import numpy as np
 import pandas_ta as ta
-from typing import Dict, Any
+import numpy as np
 
-def calculate_drawdown(equity_curve):
-    peak = equity_curve.expanding(min_periods=1).max()
-    drawdown = (equity_curve - peak) / peak
-    return drawdown.min()
-
-def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
-    """
-    Simulación histórica utilizando una aproximación del Quant Score del Oráculo.
-    Limitado a los últimos 90 días (3 meses) para eficiencia en tiempo real.
-    """
+def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0, mode: str = "Balanceado", fee_rate: float = 0.001) -> dict:
     if df is None or df.empty or len(df) < 50:
         return {"error": "Not enough data for backtesting."}
         
     df = df.copy()
     
-    # Calcular Indicadores (Aproximación Vectorizada del Quant Score)
+    # Calculate Indicators
     df['rsi'] = ta.rsi(df['close'], length=14)
     df['ema_short'] = ta.ema(df['close'], length=9)
     df['ema_long'] = ta.ema(df['close'], length=21)
@@ -31,133 +21,171 @@ def run_backtest(df: pd.DataFrame, initial_balance: float = 10000.0) -> dict:
         df['macd'] = 0
         df['macd_signal'] = 0
 
-    # Llenar nulos
     df = df.fillna(0)
 
-    # Limitar a los últimos 100 periodos para mayor velocidad Y DESPUÉS de calcular indicadores
-    if len(df) > 100:
-        df = df.iloc[-100:].copy()
+    # Risk mode thresholds
+    buy_threshold = 55
+    sell_threshold = 45
+    if mode == "Agresivo":
+        buy_threshold = 50
+        sell_threshold = 50
+    elif mode == "Conservador":
+        buy_threshold = 65
+        sell_threshold = 35
 
-    df = df.fillna(0)
-
-    # Generar Señales (Score Proxy > 60 = Compra, < 40 = Venta)
-    # 1. RSI Score (0 a 100)
-    # 2. MACD Trend (Bullish = 1, Bearish = 0)
-    # 3. EMA Trend (Bullish = 1, Bearish = 0)
-    
-    df['rsi_score'] = 100 - df['rsi'].clip(0, 100)
+    df['rsi_score'] = np.where(df['rsi'] > 0, 100 - df['rsi'].clip(0, 100), 50)
     df['macd_bull'] = (df['macd'] > df['macd_signal']).astype(int) * 100
     df['ema_bull'] = (df['ema_short'] > df['ema_long']).astype(int) * 100
     
-    # Quant Score Proxy (Promedio ponderado simple)
     df['quant_score_proxy'] = (df['rsi_score'] * 0.4) + (df['macd_bull'] * 0.3) + (df['ema_bull'] * 0.3)
 
-    # Reglas de Entrada/Salida
     df['signal'] = 0
-    df.loc[df['quant_score_proxy'] > 55, 'signal'] = 1
-    df.loc[df['quant_score_proxy'] < 45, 'signal'] = -1
+    df.loc[df['quant_score_proxy'] >= buy_threshold, 'signal'] = 1
+    df.loc[df['quant_score_proxy'] <= sell_threshold, 'signal'] = -1
 
-    # Operar en la próxima vela para evitar look-ahead bias
-    df['position'] = df['signal'].shift(1)
-    df['position'] = df['position'].replace(0, pd.NA).ffill().fillna(0)
-
-    # Calcular retornos y equity curve
-    df['log_ret'] = np.log(df['close'] / df['close'].shift(1)).fillna(0)
+    # Shift to prevent lookahead bias
+    df['position'] = df['signal'].shift(1).fillna(0)
     
-    # Restar comisiones (0.1% Taker fee en Binance = 0.001)
-    FEE_RATE = 0.001
-    df['trade_entry'] = (df['position'] == 1) & (df['position'].shift(1) != 1)
-    df['trade_exit'] = (df['position'] != 1) & (df['position'].shift(1) == 1)
-    
-    df['fees'] = 0.0
-    df.loc[df['trade_entry'], 'fees'] = FEE_RATE
-    df.loc[df['trade_exit'], 'fees'] = FEE_RATE
-    
-    df['strategy_ret'] = (df['position'] * df['log_ret']) - df['fees']
-    
-    df['strategy_ret'] = df['strategy_ret'].astype(float)
-    df['equity_curve'] = initial_balance * np.exp(df['strategy_ret'].cumsum())
-    
-    # Extraer Serie Temporal de la Curva de Capital (para Lightweight Charts)
-    equity_series = []
-    for date, row in df.iterrows():
-        # date puede ser string o datetime
-        ts = date if isinstance(date, str) else date.strftime('%Y-%m-%d')
-        equity_series.append({
-            "time": ts,
-            "value": round(float(row['equity_curve']), 2)
-        })
-    
-    # Extraer Operaciones (Trades)
-    trades = []
+    # Simulate trades
+    balance = initial_balance
+    tokens = 0
     in_position = False
-    entry_price = 0.0
+    entry_price = 0
     entry_time = None
+    
+    trades = []
+    equity_curve = []
+    bh_equity_curve = []
+    markers = []
+    
+    initial_price = df.iloc[0]['open']
+    if initial_price == 0: initial_price = 1
+    bh_tokens = initial_balance / initial_price
 
-    for idx, row in df.iterrows():
-        ts_str = idx if isinstance(idx, str) else idx.strftime('%Y-%m-%d %H:%M:%S')
-        
-        if row['position'] == 1 and not in_position:
-            in_position = True
-            entry_price = row['open']
-            entry_time = ts_str
-        elif row['position'] <= 0 and in_position:
-            in_position = False
-            exit_price = row['open']
-            exit_time = ts_str
+    for index, row in df.iterrows():
+        price = row['open']
+        if price == 0: continue
             
-            if entry_price > 0:
-                # PnL con comisiones deducidas
-                pnl = (exit_price - entry_price) / entry_price - (2 * FEE_RATE)
-                trades.append({
-                    "entry_time": entry_time,
-                    "exit_time": exit_time,
-                    "entry_price": float(entry_price),
-                    "exit_price": float(exit_price),
-                    "pnl_percent": float(pnl * 100)
-                })
+        current_date = index.isoformat() if hasattr(index, 'isoformat') else str(index)
+        
+        # Check signal changes
+        pos = row['position']
+        
+        if pos == 1 and not in_position:
+            # Buy
+            fee = balance * fee_rate
+            tokens = (balance - fee) / price
+            balance = 0
+            in_position = True
+            entry_price = price
+            entry_time = current_date
+            
+            markers.append({
+                "time": current_date,
+                "position": "belowBar",
+                "color": "#22C55E",
+                "shape": "arrowUp",
+                "text": "Buy"
+            })
+            
+        elif pos == -1 and in_position:
+            # Sell
+            gross = tokens * price
+            fee = gross * fee_rate
+            balance = gross - fee
+            
+            pnl_pct = ((balance - (entry_price * tokens)) / (entry_price * tokens)) * 100 if (entry_price * tokens) > 0 else 0
+            trades.append({
+                "entryDate": entry_time,
+                "entryPrice": entry_price,
+                "exitDate": current_date,
+                "exitPrice": price,
+                "pnlPct": pnl_pct,
+                "duration": 0 # We can calculate later if needed
+            })
+            
+            tokens = 0
+            in_position = False
+            
+            markers.append({
+                "time": current_date,
+                "position": "aboveBar",
+                "color": "#EF4444",
+                "shape": "arrowDown",
+                "text": "Sell"
+            })
+            
+        # Record equity
+        current_equity = balance + (tokens * price)
+        equity_curve.append({"time": current_date, "value": current_equity})
+        
+        bh_equity = bh_tokens * price
+        bh_equity_curve.append({"time": current_date, "value": bh_equity})
 
-    # Cerrar posición al final si quedó abierta
-    if in_position and entry_price > 0:
-        exit_price = df.iloc[-1]['close']
-        ts_str = df.index[-1] if isinstance(df.index[-1], str) else df.index[-1].strftime('%Y-%m-%d %H:%M:%S')
-        pnl = (exit_price - entry_price) / entry_price - (2 * FEE_RATE)
+    # Close open position at end
+    if in_position:
+        last_price = df.iloc[-1]['close']
+        gross = tokens * last_price
+        fee = gross * fee_rate
+        balance = gross - fee
+        current_equity = balance
+        pnl_pct = ((balance - (entry_price * tokens)) / (entry_price * tokens)) * 100 if (entry_price * tokens) > 0 else 0
         trades.append({
-            "entry_time": entry_time,
-            "exit_time": ts_str,
-            "entry_price": float(entry_price),
-            "exit_price": float(exit_price),
-            "pnl_percent": float(pnl * 100)
+            "entryDate": entry_time,
+            "entryPrice": entry_price,
+            "exitDate": df.index[-1].isoformat() if hasattr(df.index[-1], 'isoformat') else str(df.index[-1]),
+            "exitPrice": last_price,
+            "pnlPct": pnl_pct,
+            "duration": 0
         })
 
-    # Calcular Métricas
-    win_rate = 0.0
-    if trades:
-        winning_trades = sum(1 for t in trades if t['pnl_percent'] > 0)
-        win_rate = winning_trades / len(trades)
-
-    final_balance = float(df['equity_curve'].iloc[-1])
-    total_return = (final_balance - initial_balance) / initial_balance
-    max_drawdown = float(calculate_drawdown(df['equity_curve']))
+    # Calculate metrics
+    final_equity = current_equity
+    net_return_pct = ((final_equity - initial_balance) / initial_balance) * 100
     
-    # Sharpe Ratio
-    daily_returns = np.exp(df['strategy_ret'].replace(0, np.nan).dropna()) - 1
-    if len(daily_returns) > 0 and pd.notna(daily_returns.std()) and daily_returns.std() != 0:
-        sharpe_ratio = float((daily_returns.mean()) / daily_returns.std() * np.sqrt(365))
-    else:
-        sharpe_ratio = 0.0
+    total_trades = len(trades)
+    winning_trades = [t for t in trades if t['pnlPct'] > 0]
+    win_rate = (len(winning_trades) / total_trades * 100) if total_trades > 0 else 0
+    
+    gross_profit = sum(t['pnlPct'] for t in winning_trades)
+    gross_loss = abs(sum(t['pnlPct'] for t in trades if t['pnlPct'] < 0))
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else (gross_profit if gross_profit > 0 else 0)
+    
+    # Drawdown
+    equity_series = pd.Series([x["value"] for x in equity_curve])
+    peak = equity_series.cummax()
+    drawdown = (peak - equity_series) / peak * 100
+    max_drawdown = drawdown.max() if not drawdown.empty else 0
+    
+    # Sharpe (approximate, daily returns)
+    returns = equity_series.pct_change().dropna()
+    sharpe = 0
+    sortino = 0
+    if not returns.empty and returns.std() != 0:
+        sharpe = (returns.mean() / returns.std()) * np.sqrt(365)
+        downside = returns[returns < 0]
+        if not downside.empty and downside.std() != 0:
+            sortino = (returns.mean() / downside.std()) * np.sqrt(365)
+            
+    # CAGR approximation
+    days = (df.index[-1] - df.index[0]).days if len(df) > 1 else 1
+    if days == 0: days = 1
+    cagr = ((final_equity / initial_balance) ** (365.0 / days) - 1) * 100 if final_equity > 0 else 0
 
     return {
         "metrics": {
-            "total_return_percent": round(total_return * 100, 2),
-            "max_drawdown_percent": round(max_drawdown * 100, 2),
-            "win_rate_percent": round(win_rate * 100, 2),
-            "sharpe_ratio": round(sharpe_ratio, 2),
-            "initial_balance": initial_balance,
-            "final_balance": round(final_balance, 2),
-            "total_trades": len(trades)
+            "netReturn": net_return_pct,
+            "cagr": cagr,
+            "sharpe": sharpe,
+            "sortino": sortino,
+            "maxDrawdown": max_drawdown,
+            "winRate": win_rate,
+            "profitFactor": profit_factor,
+            "totalTrades": total_trades,
+            "totalFees": initial_balance * fee_rate * total_trades * 2 # rough approx
         },
-        "trades": trades,
-        "equity_curve": equity_series
+        "equityCurve": equity_curve,
+        "bhEquityCurve": bh_equity_curve,
+        "markers": markers,
+        "trades": trades
     }
-
