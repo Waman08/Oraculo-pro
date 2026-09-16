@@ -275,6 +275,9 @@ async def lifespan(app: FastAPI):
     # Start Garbage Collector
     gc_task = asyncio.create_task(cache_cleanup_loop())
     
+    app.state.bot_task = bot_task
+    app.state.screener_task = screener_task
+    
     yield
     
     print("[BYE] Backend shutting down.")
@@ -372,13 +375,68 @@ async def execute_paper_trade(request: Request, body: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/health")
-async def health():
-    """Health check endpoint."""
+async def health(request: Request):
+    """Detailed Health Check Endpoint"""
+    import httpx
+    
+    uptime = time.time() - START_TIME
+    
+    # Check Tasks
+    bot_task = getattr(request.app.state, "bot_task", None)
+    screener_task = getattr(request.app.state, "screener_task", None)
+    
+    bot_active = bot_task is not None and not bot_task.done()
+    screener_active = screener_task is not None and not screener_task.done()
+    
+    # Check Supabase
+    db_latency = -1.0
+    from services.supabase_client import supabase
+    if supabase:
+        t0 = time.time()
+        try:
+            supabase.table("user_preferences").select("id").limit(1).execute()
+            db_latency = time.time() - t0
+        except:
+            db_latency = -1.0
+            
+    # Check Binance
+    binance_latency = -1.0
+    t1 = time.time()
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            resp = await client.get("https://api.binance.com/api/v3/ping")
+            if resp.status_code == 200:
+                binance_latency = time.time() - t1
+    except:
+        binance_latency = -1.0
+        
+    global _last_screener_run
+    screener_delay = time.time() - _last_screener_run if _last_screener_run > 0 else -1
+    
+    is_degraded = not bot_active or not screener_active or db_latency < 0 or binance_latency < 0
+    
     return {
-        "status": "healthy",
-        "version": "1.0.0",
-        "uptime_seconds": round(time.time() - START_TIME, 1),
-        "supported_symbols": len(BINANCE_PAIR_MAP),
+        "status": "degraded" if is_degraded else "ok",
+        "uptime_seconds": round(uptime, 2),
+        "services": {
+            "telegram_bot": {
+                "active": bot_active,
+                "status": "polling" if bot_active else "stopped"
+            },
+            "screener_loop": {
+                "active": screener_active,
+                "cache_size": len(_screener_cache),
+                "last_run_seconds_ago": round(screener_delay, 1) if screener_delay >= 0 else "Never"
+            },
+            "supabase": {
+                "connected": db_latency >= 0,
+                "latency_ms": round(db_latency * 1000, 2) if db_latency >= 0 else -1
+            },
+            "binance": {
+                "connected": binance_latency >= 0,
+                "latency_ms": round(binance_latency * 1000, 2) if binance_latency >= 0 else -1
+            }
+        }
     }
 
 
