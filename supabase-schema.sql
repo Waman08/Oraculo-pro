@@ -117,3 +117,50 @@ CREATE TRIGGER trg_preferences_updated
 CREATE TRIGGER trg_telegram_updated
   BEFORE UPDATE ON telegram_config
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- ============================================================
+-- PAPER TRADING TABLES
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS paper_portfolio (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT UNIQUE NOT NULL,
+  initial_capital NUMERIC DEFAULT 10000,
+  current_balance NUMERIC DEFAULT 10000,
+  equity NUMERIC DEFAULT 10000,
+  auto_paper_trading BOOLEAN DEFAULT false,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paper_trades (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  entry_price NUMERIC NOT NULL,
+  amount NUMERIC NOT NULL,
+  total_usd NUMERIC NOT NULL,
+  stop_loss NUMERIC,
+  take_profit NUMERIC,
+  status TEXT DEFAULT 'OPEN',
+  exit_price NUMERIC,
+  pnl_usd NUMERIC,
+  pnl_pct NUMERIC,
+  exit_reason TEXT,
+  opened_at TIMESTAMPTZ DEFAULT now(),
+  closed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_paper_portfolio_session ON paper_portfolio(session_id);
+CREATE INDEX IF NOT EXISTS idx_paper_trades_session ON paper_trades(session_id);
+CREATE INDEX IF NOT EXISTS idx_paper_trades_status ON paper_trades(status);
+
+ALTER TABLE paper_portfolio ENABLE ROW LEVEL SECURITY;
+ALTER TABLE paper_trades ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_all_paper_portfolio" ON paper_portfolio FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_paper_trades" ON paper_trades FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE TRIGGER trg_paper_portfolio_updated
+BEFORE UPDATE ON paper_portfolio
+FOR EACH ROW EXECUTE PROCEDURE update_updated_at();
