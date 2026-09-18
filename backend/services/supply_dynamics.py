@@ -11,9 +11,53 @@ import time
 from typing import Dict, Optional
 
 _supply_cache: dict = {}
-SUPPLY_CACHE_TTL = 3600  # 1 hour (supply data doesn't change frequently)
+SUPPLY_CACHE_TTL = 86400  # 24 hours (supply data doesn't change frequently)
 
 # CoinGecko ID mapping for common symbols
+
+HARDCODED_SUPPLY_FALLBACK = {
+    "BTC": {
+        "circulating_supply": 19700000,
+        "total_supply": 21000000,
+        "max_supply": 21000000,
+        "market_cap": {"usd": 1200000000000},
+        "fully_diluted_valuation": {"usd": 1300000000000},
+        "current_price": {"usd": 61000}
+    },
+    "ETH": {
+        "circulating_supply": 120000000,
+        "total_supply": 120000000,
+        "max_supply": None,
+        "market_cap": {"usd": 350000000000},
+        "fully_diluted_valuation": {"usd": 350000000000},
+        "current_price": {"usd": 2900}
+    },
+    "SOL": {
+        "circulating_supply": 460000000,
+        "total_supply": 570000000,
+        "max_supply": None,
+        "market_cap": {"usd": 65000000000},
+        "fully_diluted_valuation": {"usd": 80000000000},
+        "current_price": {"usd": 140}
+    },
+    "BNB": {
+        "circulating_supply": 149000000,
+        "total_supply": 149000000,
+        "max_supply": 200000000,
+        "market_cap": {"usd": 80000000000},
+        "fully_diluted_valuation": {"usd": 80000000000},
+        "current_price": {"usd": 550}
+    },
+    "XRP": {
+        "circulating_supply": 55000000000,
+        "total_supply": 99980000000,
+        "max_supply": 100000000000,
+        "market_cap": {"usd": 30000000000},
+        "fully_diluted_valuation": {"usd": 55000000000},
+        "current_price": {"usd": 0.55}
+    }
+}
+
 SYMBOL_TO_COINGECKO = {
     "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
     "XRP": "ripple", "ADA": "cardano", "DOGE": "dogecoin",
@@ -65,19 +109,24 @@ async def get_supply_data(symbol: str) -> Optional[Dict]:
                 data = response.json()
             elif response.status_code == 429:
                 print(f"[SupplyDynamics] CoinGecko rate limited for {symbol}")
-                if cache_key in _supply_cache:
-                    return _supply_cache[cache_key]["data"]
-                return None
+                data = None
             else:
                 print(f"[SupplyDynamics] HTTP {response.status_code} for {symbol}")
-                return None
+                data = None
     except Exception as e:
         print(f"[SupplyDynamics] Error fetching {symbol}: {e}")
+        data = None
+        
+    md = data.get("market_data", {}) if data else None
+    
+    if not md:
         if cache_key in _supply_cache:
             return _supply_cache[cache_key]["data"]
-        return None
-    
-    md = data.get("market_data", {})
+        elif symbol.upper() in HARDCODED_SUPPLY_FALLBACK:
+            print(f"[SupplyDynamics] Using hardcoded fallback for {symbol}")
+            md = HARDCODED_SUPPLY_FALLBACK[symbol.upper()]
+        else:
+            return None
     
     circulating = md.get("circulating_supply") or 0
     total = md.get("total_supply") or 0

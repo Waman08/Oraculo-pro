@@ -95,7 +95,7 @@ export default function OnChainDashboard({ symbol, onSymbolChange }: OnChainDash
             <div className="w-full">
               {/* SIGNALS (DEFAULT) */}
               {activeCategory === 'signals' && (
-                <SignalsIndex signalsData={data.subSignals || data.signals || {}} symbol={symbol} />
+                <SignalsIndex signalsData={{ ...(data.subSignals || data.signals || {}), signalsIndex: data.signalsIndex || data.master || data.score || 50, signal: data.signalsSignal }} symbol={symbol} />
               )}
 
               {/* FUNDAMENTALS */}

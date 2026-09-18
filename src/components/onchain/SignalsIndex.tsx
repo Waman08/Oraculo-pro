@@ -36,7 +36,7 @@ export default function SignalsIndex({ signalsData, symbol }: SignalsIndexProps)
         {/* Top Row: Master + 3 Med */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end justify-items-center">
           <div className="md:col-span-1">
-            <GaugeWidget value={signalsData.signalsIndex} label="Quant Index" size="lg" />
+            <GaugeWidget value={signalsData.signalsIndex ?? (signalsData as any).master ?? 50} label="Quant Index" size="lg" />
           </div>
           <div className="md:col-span-3 grid grid-cols-3 gap-4 w-full">
             <GaugeWidget value={signalsData.whaleAccumulation} label="Whale Accumulation" size="md" />
