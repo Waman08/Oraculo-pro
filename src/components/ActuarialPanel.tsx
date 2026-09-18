@@ -113,32 +113,33 @@ function MonteCarloChart({ paths }: { paths: { p10: number[]; p50: number[]; p90
 }
 
 export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial: any; currentPrice: number }) {
-  if (!actuarial || actuarial.dataAvailable === false) {
-    return (
-      <div className="glass-card p-5 animate-fadeInUp">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield size={16} style={{ color: 'var(--text-muted)' }} />
-          <h3 className="text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-            ANÁLISIS ACTUARIAL DE RIESGO
-          </h3>
-        </div>
-        <div
-          className="flex flex-col items-center justify-center p-6 text-center border border-dashed rounded-xl h-full min-h-[140px]"
-          style={{
-            borderColor: 'var(--bg-tertiary)',
-            backgroundColor: 'var(--bg-secondary)',
-          }}
-        >
-          <Activity size={24} style={{ color: 'var(--text-muted)' }} className="mb-2 opacity-50" />
-          <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>
-            Datos insuficientes para el análisis actuarial
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  const data: ActuarialData = actuarial;
+    const data = React.useMemo(() => {
+    if (actuarial && actuarial.dataAvailable) {
+      // Manejador en caso de que backend retorne markovRegimes en lugar de markovRegime
+      const markov = actuarial.markovRegime || actuarial.markovRegimes || { bull: 0.33, bear: 0.33, sideways: 0.34 };
+      return { 
+        ...actuarial, 
+        markovRegime: markov,
+        isEstimated: actuarial.isFallback || false 
+      } as ActuarialData & { isEstimated: boolean };
+    }
+    const p = currentPrice || 100;
+    return {
+      dataAvailable: true,
+      isEstimated: true,
+      riskMetrics: { var95: 5.0, cvar95: 7.5, annualVolatility: 45.0 },
+      monteCarlo7D: {
+        p10: p * 0.95, p50: p, p90: p * 1.05,
+        paths: {
+          p10: [p, p*0.99, p*0.98, p*0.97, p*0.96, p*0.95, p*0.95, p*0.95],
+          p50: [p, p, p, p, p, p, p, p],
+          p90: [p, p*1.01, p*1.02, p*1.03, p*1.04, p*1.05, p*1.05, p*1.05],
+        },
+        jump_params: { lambda: 0, mu_j: 0, sigma_j: 0 }
+      },
+      markovRegime: { bull: 0.33, bear: 0.33, sideways: 0.34 }
+    } as ActuarialData & { isEstimated: boolean };
+  }, [actuarial, currentPrice]);
 
   // 1. VaR & Volatility normalization
   const rawVar = data.riskMetrics?.var95 ?? 0;
@@ -193,11 +194,16 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
     <div className="glass-card p-5 animate-fadeInUp space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: 'var(--bg-tertiary)' }}>
-        <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
           <Shield size={18} style={{ color: 'var(--accent-gold)' }} />
           <h3 className="text-sm font-semibold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
             ANÁLISIS ACTUARIAL DE RIESGO
           </h3>
+          {data.isEstimated && (
+            <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-2 py-0.5 rounded border border-yellow-500/30 font-bold ml-2">
+              MODO ESTIMADO
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {jumpParams && jumpParams.lambda > 0 && (
