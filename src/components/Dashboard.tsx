@@ -44,7 +44,7 @@ import dynamic from 'next/dynamic';
 
 const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 
-import BacktestBadge from './BacktestBadge';
+
 
 import BacktestChart from './BacktestChart';
 
@@ -912,7 +912,13 @@ export default function Dashboard() {
 
             <BarChart3 size={11} />
 
-            Vol: ${((data.volumePeriod ?? data.volume24h) / 1e9).toFixed(2)}B
+            Vol: {(() => {
+              const rawVol = (data as any).quoteVolume24h ?? ((data.volumePeriod ?? data.volume24h ?? 0) * (data.currentPrice || 1));
+              if (rawVol >= 1e9) return `$${(rawVol / 1e9).toFixed(2)}B`;
+              if (rawVol >= 1e6) return `$${(rawVol / 1e6).toFixed(2)}M`;
+              if (rawVol >= 1e3) return `$${(rawVol / 1e3).toFixed(1)}k`;
+              return `$${rawVol.toFixed(0)}`;
+            })()}
 
           </span>
 
@@ -996,7 +1002,7 @@ export default function Dashboard() {
 
       <div className={activeTab === 'terminal' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
 
-        <BacktestBadge />
+        
 
 
 
