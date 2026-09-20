@@ -6,7 +6,6 @@ import jsPDF from 'jspdf';
 import { FileImage, FileText } from 'lucide-react';
 import { useLocale, useAppSettings } from './AppContext';
 import { exportInstitutionalPDF } from '@/lib/pdfReportGenerator';
-import { MarketAnalysis } from '@/lib/api';
 
 export default function ExportReport({ data }: { data: any | null }) {
   const { t } = useLocale();
