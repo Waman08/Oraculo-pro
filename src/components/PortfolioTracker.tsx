@@ -68,7 +68,7 @@ export default function PortfolioTracker() {
     const fetchPrices = async () => {
       const symbols = Array.from(new Set(items.map(i => i.symbol)));
       if (symbols.length === 0) return;
-      const prices = await fetchAllBinancePrices(symbols);
+      const prices = await fetchAllBinancePrices();
       setMultiplePrices(prices);
     };
     fetchPrices();
