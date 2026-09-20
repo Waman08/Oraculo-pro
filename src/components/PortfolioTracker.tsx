@@ -69,7 +69,7 @@ export default function PortfolioTracker() {
       const symbols = Array.from(new Set(items.map(i => i.symbol)));
       if (symbols.length === 0) return;
       const prices = await fetchAllBinancePrices();
-      setMultiplePrices(prices);
+      setMultiplePrices(Object.fromEntries(prices));
     };
     fetchPrices();
     const interval = setInterval(fetchPrices, 60000);
