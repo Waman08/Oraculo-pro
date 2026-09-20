@@ -28,7 +28,7 @@ from services.supply_dynamics import get_supply_data
 # AUDIT FIX: whale_tracker removed (was 100% fake random data)
 from services.user_prefs import get_user_prefs, save_user_prefs
 
-from services.paper_trading import get_or_create_portfolio, open_paper_trade, close_paper_trade, update_open_trades, get_performance_metrics, update_auto_trading, calculate_kelly_position_size
+
 
 
 from services.telegram import TelegramSender, _escape_html
@@ -218,20 +218,23 @@ async def screener_updater_loop():
                                                 sess = row.get("session_id")
                                                 if sess:
                                                     try:
-                                                        port = await get_or_create_portfolio(sess)
-                                                        if port and port.get("auto_paper_trading"):
-                                                            bal = float(port.get("current_balance", 0.0))
-                                                            if bal > 10: # Minimum to trade
-                                                                amt = await calculate_kelly_position_size(sess, bal)
-                                                                trade_side = "LONG" if is_strong_buy else "SHORT"
-                                                                await open_paper_trade(sess, sym, trade_side, price, amt, sl, tp)
-                                                                print(f"[AutoTrade] Opened {trade_side} on {sym} for {sess} with ${amt:.2f}")
+                                                        acc_res = supabase.table("paper_accounts").select("*").eq("session_id", sess).execute()
+                                                        if acc_res.data and len(acc_res.data) > 0:
+                                                            acc = acc_res.data[0]
+                                                            if acc.get("auto_trading"):
+                                                                bal = float(acc.get("cash_balance", 0.0))
+                                                                if bal > 10:
+                                                                    amt = bal * 0.05
+                                                                    trade_side = "BUY" if is_strong_buy else "SELL"
+                                                                    execute_trade(sess, sym, trade_side, price, amt, sl, tp)
+                                                                    print(f"[AutoTrade] Opened {trade_side} on {sym} for {sess} with ${amt:.2f}")
                                                     except Exception as trade_err:
                                                         print(f"[AutoTrade Err] {trade_err}")
+
                             
                             return True
                     except Exception as e:
-                        import traceback; print(f"\[Screener Loop\] Error analyzing {sym}:\n{traceback.format_exc()}")
+                        import traceback; print(f"[Screener Loop] Error analyzing {sym}:\n{traceback.format_exc()}")
                     return False
                 
                 results = await asyncio.gather(
@@ -316,63 +319,9 @@ app.include_router(api_public.router)
 # PAPER TRADING ENDPOINTS
 # ============================================================
 
-@app.get("/api/paper/portfolio")
-async def get_paper_portfolio(request: Request):
-    session_id = request.headers.get("x-user-id", "default")
-    try:
-        portfolio = await get_or_create_portfolio(session_id)
-        metrics = await get_performance_metrics(session_id)
-        
-        # Get active trades
-        from services.supabase_client import supabase
-        res = supabase.table("paper_trades").select("*").eq("session_id", session_id).eq("status", "OPEN").execute()
-        active_trades = res.data or []
-        
-        return {
-            "success": True,
-            "portfolio": portfolio,
-            "metrics": metrics,
-            "active_trades": active_trades
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/paper/trade")
-async def execute_paper_trade(request: Request, body: dict):
-    session_id = request.headers.get("x-user-id", "default")
-    action = body.get("action", "open") # 'open' or 'close'
-    
-    try:
-        if action == "open":
-            symbol = body.get("symbol")
-            side = body.get("side")
-            price = body.get("price")
-            amount_usd = body.get("amount_usd")
-            sl = body.get("sl")
-            tp = body.get("tp")
-            
-            if not all([symbol, side, price, amount_usd]):
-                raise HTTPException(status_code=400, detail="Missing parameters")
-                
-            trade = await open_paper_trade(session_id, symbol, side, price, amount_usd, sl, tp)
-            return {"success": True, "trade": trade}
-            
-        elif action == "close":
-            trade_id = body.get("trade_id")
-            exit_price = body.get("exit_price")
-            if not trade_id or not exit_price:
-                raise HTTPException(status_code=400, detail="Missing trade_id or exit_price")
-                
-            trade = await close_paper_trade(trade_id, exit_price, "CLOSED_MANUAL")
-            return {"success": True, "trade": trade}
-            
-        elif action == "settings":
-            auto_trading = body.get("auto_paper_trading", False)
-            await update_auto_trading(session_id, auto_trading)
-            return {"success": True, "auto_paper_trading": auto_trading}
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+
 
 @app.get("/api/health")
 async def health(request: Request):
