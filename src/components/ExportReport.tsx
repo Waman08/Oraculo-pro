@@ -5,8 +5,10 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { FileImage, FileText } from 'lucide-react';
 import { useLocale, useAppSettings } from './AppContext';
+import { exportInstitutionalPDF } from '@/lib/pdfReportGenerator';
+import { MarketAnalysis } from '@/lib/api';
 
-export default function ExportReport() {
+export default function ExportReport({ data }: { data: any | null }) {
   const { t } = useLocale();
   const { symbol } = useAppSettings();
   const [isExporting, setIsExporting] = useState(false);
@@ -15,31 +17,26 @@ export default function ExportReport() {
     setIsExporting(true);
     
     try {
-      const element = document.getElementById('dashboard-export-area');
-      if (!element) throw new Error("Dashboard not found");
-
-      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: isLight ? '#f8fafc' : '#0f172a',
-      });
-
-      if (format === 'png') {
-        const link = document.createElement('a');
-        link.download = `Oracle_Report_${symbol}_${new Date().toISOString().split('T')[0]}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
+      if (format === 'pdf' && data) {
+        exportInstitutionalPDF(data, symbol);
       } else {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'px',
-          format: [canvas.width / 2, canvas.height / 2]
+        const element = document.getElementById('dashboard-export-area');
+        if (!element) throw new Error("Dashboard not found");
+
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+        const canvas = await html2canvas(element, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: isLight ? '#f8fafc' : '#0f172a',
         });
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
-        pdf.save(`Oracle_Report_${symbol}_${new Date().toISOString().split('T')[0]}.pdf`);
+
+        if (format === 'png') {
+          const link = document.createElement('a');
+          link.download = `Oracle_Report_${symbol}_${new Date().toISOString().split('T')[0]}.png`;
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }
       }
     } catch (error) {
       console.error("Export failed", error);
@@ -60,7 +57,7 @@ export default function ExportReport() {
       </button>
       <button 
         onClick={() => handleExport('pdf')}
-        disabled={isExporting}
+        disabled={isExporting || !data}
         className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded transition-colors disabled:opacity-50"
         style={{ background: 'var(--accent-gold)', color: '#000' }}
       >

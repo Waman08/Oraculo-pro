@@ -934,7 +934,7 @@ export default function Dashboard() {
 
          <div data-html2canvas-ignore className="ml-4">
 
-           <ExportReport />
+           <ExportReport data={data} />
 
          </div>
 
