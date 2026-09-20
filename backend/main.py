@@ -97,7 +97,7 @@ async def screener_updater_loop():
             # Paper Trading Update
             try:
                 current_prices = {k: v["price"] for k, v in tickers.items()}
-                await update_open_trades(current_prices)
+                check_positions_against_ticks(current_prices)
             except Exception as pt_err:
                 print(f"[Paper Trading] Error tracking trades: {pt_err}")
             
@@ -984,6 +984,40 @@ async def websocket_endpoint(websocket: WebSocket, symbol: str):
 # ============================================================
 # ENTRY POINT
 # ============================================================
+
+
+@app.post("/api/paper/order")
+async def create_paper_order(request: Request):
+    try:
+        payload = await request.json()
+        session_id = payload.get("session_id", "default_session")
+        symbol = payload.get("symbol")
+        side = payload.get("side")
+        price = payload.get("price")
+        size_usd = payload.get("size_usd")
+        sl = payload.get("stop_loss")
+        tp = payload.get("take_profit")
+        
+        if not symbol or not side or not price or not size_usd:
+            raise HTTPException(status_code=400, detail="Missing required parameters")
+            
+        res = execute_trade(session_id, symbol, side, float(price), float(size_usd), sl, tp)
+        if "error" in res:
+            raise HTTPException(status_code=400, detail=res["error"])
+            
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/paper/summary")
+async def get_paper_summary(session_id: str = "default_session"):
+    try:
+        res = get_account_analytics(session_id)
+        if "error" in res:
+            raise HTTPException(status_code=400, detail=res["error"])
+        return res
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

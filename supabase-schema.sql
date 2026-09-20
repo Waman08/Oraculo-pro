@@ -164,3 +164,46 @@ CREATE POLICY "anon_all_paper_trades" ON paper_trades FOR ALL TO anon USING (tru
 CREATE TRIGGER trg_paper_portfolio_updated
 BEFORE UPDATE ON paper_portfolio
 FOR EACH ROW EXECUTE PROCEDURE update_updated_at();
+
+CREATE TABLE IF NOT EXISTS paper_accounts (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT UNIQUE NOT NULL,
+  initial_balance NUMERIC DEFAULT 10000,
+  cash_balance NUMERIC DEFAULT 10000,
+  equity NUMERIC DEFAULT 10000,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS paper_positions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  session_id TEXT NOT NULL,
+  symbol TEXT NOT NULL,
+  side TEXT NOT NULL,
+  entry_price NUMERIC NOT NULL,
+  amount NUMERIC NOT NULL,
+  total_usd NUMERIC NOT NULL,
+  stop_loss NUMERIC,
+  take_profit NUMERIC,
+  status TEXT DEFAULT 'OPEN',
+  exit_price NUMERIC,
+  pnl_usd NUMERIC,
+  pnl_pct NUMERIC,
+  exit_reason TEXT,
+  opened_at TIMESTAMPTZ DEFAULT now(),
+  closed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_paper_accounts_session ON paper_accounts(session_id);
+CREATE INDEX IF NOT EXISTS idx_paper_positions_session ON paper_positions(session_id);
+CREATE INDEX IF NOT EXISTS idx_paper_positions_status ON paper_positions(status);
+
+ALTER TABLE paper_accounts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE paper_positions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "anon_all_paper_accounts" ON paper_accounts FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all_paper_positions" ON paper_positions FOR ALL TO anon USING (true) WITH CHECK (true);
+
+CREATE TRIGGER trg_paper_accounts_updated
+BEFORE UPDATE ON paper_accounts
+FOR EACH ROW EXECUTE PROCEDURE update_updated_at();
+ALTER TABLE paper_accounts ADD COLUMN IF NOT EXISTS auto_trading BOOLEAN DEFAULT false;
