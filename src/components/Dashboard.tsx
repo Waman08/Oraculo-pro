@@ -73,6 +73,7 @@ export default function Dashboard() {
   const { t } = useLocale();
 
   const livePriceData = useAppStore(state => state.livePrices[symbol]);
+  const addToast = useAppStore(state => state.addToast);
 
 
 
