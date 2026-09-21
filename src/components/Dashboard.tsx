@@ -77,6 +77,7 @@ export default function Dashboard() {
 
 
   const [data, setData] = useState<MarketAnalysis | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const [searchInput, setSearchInput] = useState(symbol);
 
@@ -98,7 +99,13 @@ export default function Dashboard() {
 
   const breakdown = useMemo(() => {
 
-    if (!data) return null;
+    if (!data) return {
+      total: 50,
+      momentum: { score: 50, weight: 0.25, details: [] },
+      trend: { score: 50, weight: 0.25, details: [] },
+      sentiment: { score: 50, weight: 0.25, details: [] },
+      onChain: { score: 50, weight: 0.25, details: [] }
+    } as any;
 
     if (data.scoreBreakdown) return data.scoreBreakdown;
 
@@ -548,89 +555,34 @@ export default function Dashboard() {
 
 
 
-  if (!data || !breakdown) {
-
-    return (
-
-      <div className="flex flex-col gap-6 w-full animate-fadeInUp min-h-[60vh] justify-center items-center">
-
-        <div className="flex flex-col items-center gap-4 text-center">
-
-          <div className="w-16 h-16 rounded-full shimmer-bg flex items-center justify-center opacity-80 border border-[var(--accent-gold)]">
-
-            <span className="text-2xl animate-pulse">ð§ </span>
-
-          </div>
-
-          <div>
-
-            <h2 className="text-lg font-bold" style={{ color: 'var(--accent-gold)' }}>Conectando con el Motor de IA...</h2>
-
-            <p className="text-sm mt-2 max-w-md" style={{ color: 'var(--text-muted)' }}>
-
-              El servidor gratuito de Python puede tardar hasta 50 segundos en despertar si estaba inactivo. Por favor, espera...
-
-            </p>
-
-          </div>
-
-        </div>
-
-        
-
-        {/* Search Bar Skeleton */}
-
-        <div className="flex justify-center w-full mt-8">
-
-          <div className="w-full max-w-md h-12 rounded-xl shimmer-bg opacity-50" />
-
-        </div>
-
-        
-
-        {/* Header Skeleton */}
-
-        <div className="flex flex-col items-center gap-2 mt-4">
-
-          <div className="w-48 h-8 rounded-lg shimmer-bg opacity-50" />
-
-          <div className="w-32 h-6 rounded-lg shimmer-bg opacity-50" />
-
-        </div>
-
-
-
-        {/* Gauge Skeleton */}
-
-        <div className="flex justify-center mt-6 mb-4">
-
-          <div className="w-[280px] h-[190px] rounded-t-full shimmer-bg opacity-30" />
-
-        </div>
-
-
-
-        {/* Grid Skeleton */}
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-          <div className="lg:col-span-3 h-64 rounded-xl shimmer-bg opacity-40" />
-
-          <div className="lg:col-span-1 h-64 rounded-xl shimmer-bg opacity-40" />
-
-        </div>
-
-      </div>
-
-    );
-
-  }
-
-
+    const displayData = data || {
+    symbol,
+    name: symbol,
+    currentPrice: livePriceData?.price || 0,
+    priceChange24h: livePriceData?.priceChange24h || 0,
+    priceChangePeriod: livePriceData?.priceChange24h || 0,
+    volume24h: livePriceData?.volume24h || 0,
+    volumePeriod: livePriceData?.volume24h || 0,
+    quantScore: 50,
+    signal: 'Sincronizando',
+    indicators: {},
+    sentiment: { fearGreedIndex: 50, fearGreedLabel: 'Neutral' },
+    onChain: {},
+    actionableData: null,
+    actuarial: null,
+    supplyDynamics: null,
+    stablecoinAnalysis: null,
+    metrics: {}
+  } as unknown as MarketAnalysis;
 
   return (
-
     <div className="flex flex-col gap-6 w-full" id="dashboard-export-area">
+      {isSyncing && (
+        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-yellow-500/30 backdrop-blur-md animate-pulse">
+          <div className="w-2 h-2 rounded-full bg-yellow-500 animate-ping"></div>
+          <span className="text-xs font-semibold text-yellow-400">Sincronizando motor cuantitativo...</span>
+        </div>
+      )}
 
       {/* Search Bar */}
 
@@ -798,13 +750,13 @@ export default function Dashboard() {
 
           <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
 
-            {data.symbol}
+            {displayData.symbol}
 
           </h2>
 
           <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
 
-            {data.name}
+            {displayData.name}
 
           </span>
 
@@ -884,7 +836,7 @@ export default function Dashboard() {
 
           <span className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>
 
-            ${formatPrice(data.currentPrice)}
+            ${formatPrice(displayData.currentPrice)}
 
           </span>
 
@@ -894,17 +846,17 @@ export default function Dashboard() {
 
             style={{
 
-              color: (data.priceChangePeriod ?? data.priceChange24h) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
+              color: (displayData.priceChangePeriod ?? displayData.priceChange24h) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
 
-              background: (data.priceChangePeriod ?? data.priceChange24h) >= 0 ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)',
+              background: (displayData.priceChangePeriod ?? displayData.priceChange24h) >= 0 ? 'var(--signal-buy-dim)' : 'var(--signal-sell-dim)',
 
             }}
 
           >
 
-            {(data.priceChangePeriod ?? data.priceChange24h) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+            {(displayData.priceChangePeriod ?? displayData.priceChange24h) >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
 
-            {(data.priceChangePeriod ?? data.priceChange24h) >= 0 ? '+' : ''}{(data.priceChangePeriod ?? data.priceChange24h).toFixed(2)}%
+            {(displayData.priceChangePeriod ?? displayData.priceChange24h) >= 0 ? '+' : ''}{(displayData.priceChangePeriod ?? displayData.priceChange24h).toFixed(2)}%
 
           </span>
 
@@ -913,7 +865,7 @@ export default function Dashboard() {
             <BarChart3 size={11} />
 
             Vol: {(() => {
-              const rawVol = (data as any).quoteVolume24h ?? ((data.volumePeriod ?? data.volume24h ?? 0) * (data.currentPrice || 1));
+              const rawVol = (displayData as any).quoteVolume24h ?? ((displayData.volumePeriod ?? displayData.volume24h ?? 0) * (displayData.currentPrice || 1));
               if (rawVol >= 1e9) return `$${(rawVol / 1e9).toFixed(2)}B`;
               if (rawVol >= 1e6) return `$${(rawVol / 1e6).toFixed(2)}M`;
               if (rawVol >= 1e3) return `$${(rawVol / 1e3).toFixed(1)}k`;
@@ -930,11 +882,11 @@ export default function Dashboard() {
 
       <div className="flex justify-center items-center w-full max-w-sm mx-auto mb-2 mt-4">
 
-         <ScoreGauge score={data.quantScore} signal={data.signal} size={160} />
+         <ScoreGauge score={displayData.quantScore} signal={displayData.signal} size={160} />
 
          <div data-html2canvas-ignore className="ml-4">
 
-           <ExportReport data={data} />
+           <ExportReport data={displayData} />
 
          </div>
 
@@ -1014,7 +966,7 @@ export default function Dashboard() {
 
         {/* Macro Risk Alert */}
 
-        {data.actionableData?.macroRisk && data.actionableData.macroRisk !== 'macrorisk.floor' && (
+        {displayData.actionableData?.macroRisk && displayData.actionableData.macroRisk !== 'macrorisk.floor' && (
 
           <div
 
@@ -1022,7 +974,7 @@ export default function Dashboard() {
 
             style={{
 
-              borderLeft: `3px solid ${data.quantScore <= 40 ? 'var(--signal-buy)' : data.quantScore >= 60 ? 'var(--signal-sell)' : 'var(--accent-gold)'}`,
+              borderLeft: `3px solid ${displayData.quantScore <= 40 ? 'var(--signal-buy)' : displayData.quantScore >= 60 ? 'var(--signal-sell)' : 'var(--accent-gold)'}`,
 
             }}
 
@@ -1040,7 +992,7 @@ export default function Dashboard() {
 
               <div className="text-sm" style={{ color: 'var(--text-primary)' }}>
 
-                {t(data.actionableData.macroRisk)}
+                {t(displayData.actionableData.macroRisk)}
 
               </div>
 
@@ -1054,7 +1006,7 @@ export default function Dashboard() {
 
         <div className="w-full">
 
-          <CandlestickChart symbol={data.symbol} actionableData={data.actionableData} />
+          <CandlestickChart symbol={displayData.symbol} actionableData={displayData.actionableData} />
 
         </div>
 
@@ -1072,15 +1024,15 @@ export default function Dashboard() {
 
           <DCAPanel
 
-            actionableData={data.actionableData}
+            actionableData={displayData.actionableData}
 
-            currentPrice={data.currentPrice}
+            currentPrice={displayData.currentPrice}
 
           />
 
-          <SmartMoneyPanel smartMoney={data.smartMoney} currentPrice={data.currentPrice} />
+          <SmartMoneyPanel smartMoney={displayData.smartMoney} currentPrice={displayData.currentPrice} />
 
-          <LiquidityPanel liquidity={data.liquidity} />
+          <LiquidityPanel liquidity={displayData.liquidity} />
 
         </div>
 
@@ -1088,9 +1040,9 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-          <SentimentPanel sentiment={data.sentiment} macro={data.macro} />
+          <SentimentPanel sentiment={displayData.sentiment} macro={displayData.macro} />
 
-          <AIPanel data={data} />
+          <AIPanel data={displayData} />
 
         </div>
 
@@ -1110,7 +1062,7 @@ export default function Dashboard() {
 
           </h2>
 
-          <OnChainDashboard symbol={data.symbol} onSymbolChange={setSymbol} />
+          <OnChainDashboard symbol={displayData.symbol} onSymbolChange={setSymbol} />
 
         </div>
 
@@ -1118,9 +1070,9 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-          <SupplyDynamicsPanel supplyData={data.supplyDynamics} />
+          <SupplyDynamicsPanel supplyData={displayData.supplyDynamics} />
 
-          <StablecoinDashboard stablecoinData={data.stablecoinAnalysis} />
+          <StablecoinDashboard stablecoinData={displayData.stablecoinAnalysis} />
 
         </div>
 
@@ -1132,11 +1084,11 @@ export default function Dashboard() {
 
       <div className={activeTab === 'actuarial' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
 
-        <ActuarialPanel actuarial={data.actuarial} currentPrice={data.currentPrice} />
+        <ActuarialPanel actuarial={displayData.actuarial} currentPrice={displayData.currentPrice} />
 
         
 
-        {data.actionableData?.positionSizing && data.actionableData.positionSizing.recommendedSizeUSD > 0 && (
+        {displayData.actionableData?.positionSizing && displayData.actionableData.positionSizing.recommendedSizeUSD > 0 && (
 
           <div className="glass-card p-5 border relative overflow-hidden" style={{ borderColor: 'var(--accent-gold)', background: 'rgba(251, 191, 36, 0.03)' }}>
 
@@ -1158,7 +1110,7 @@ export default function Dashboard() {
 
                 <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>Tamaño Recomendado</span>
 
-                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${data.actionableData.positionSizing.recommendedSizeUSD}</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${displayData.actionableData.positionSizing.recommendedSizeUSD}</span>
 
               </div>
 
@@ -1166,7 +1118,7 @@ export default function Dashboard() {
 
                 <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>% del Portafolio</span>
 
-                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{data.actionableData.positionSizing.portfolioPct}%</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{displayData.actionableData.positionSizing.portfolioPct}%</span>
 
               </div>
 
@@ -1174,7 +1126,7 @@ export default function Dashboard() {
 
                 <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--signal-sell)' }}>Pérdida Máxima Tolerable (VaR 95%)</span>
 
-                <span className="text-2xl font-black" style={{ color: 'var(--signal-sell)' }}>${data.actionableData.positionSizing.maxRiskUSD}</span>
+                <span className="text-2xl font-black" style={{ color: 'var(--signal-sell)' }}>${displayData.actionableData.positionSizing.maxRiskUSD}</span>
 
               </div>
 

@@ -760,7 +760,7 @@ export async function fetchPythonAnalysis(
 
     const controller = new AbortController();
 
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 60s timeout for Render wake up
+    const timeoutId = setTimeout(() => controller.abort(), 50000); // 60s timeout for Render wake up
 
 
 
@@ -837,7 +837,7 @@ export async function fetchPythonScreener(
 
     const controller = new AbortController();
 
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
 
 
@@ -1044,7 +1044,7 @@ export async function fetchBacktestFromServer(
 
     const controller = new AbortController();
 
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 50000);
 
 
 
