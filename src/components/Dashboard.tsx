@@ -125,13 +125,18 @@ export default function Dashboard() {
   // Fetch real price + Fear & Greed and generate analysis (REST Fallback)
 
   const loadAnalysis = useCallback(async () => {
+    const cacheKey = `oracle_cache_${symbol}_${timeframe}_${mode}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    if (cachedData && !data) {
+      try { setData(JSON.parse(cachedData)); } catch(e){}
+    }
+    
+    setIsSyncing(true);
+    const syncStartTime = Date.now();
 
-    // Strategy: Try Python backend first â fallback to JS engine
-
-
+    // Strategy: Try Python backend first -> fallback to JS engine
 
     // 1. Try Python backend (real indicators via pandas-ta)
-
     try {
 
       const pythonResult = await fetchPythonAnalysis(symbol, timeframe, mode);
@@ -187,14 +192,29 @@ export default function Dashboard() {
 
 
         setData(pythonResult as MarketAnalysis);
-
+        localStorage.setItem(cacheKey, JSON.stringify(pythonResult));
+        setIsSyncing(false);
+        const elapsed = Date.now() - syncStartTime;
+        if (elapsed > 2000) {
+          addToast({ 
+            title: 'Análisis IA Actualizado', 
+            message: `Nuevos datos cuantitativos para ${symbol} disponibles`, 
+            type: 'success', 
+            duration: 4000 
+          });
+        }
         return;
 
       }
 
     } catch {
-
       // Python backend unavailable, continue to JS engine
+      addToast({ 
+        title: 'Modo Local Activo', 
+        message: 'Servidor Python no disponible. Usando motor algorítmico de respaldo.', 
+        type: 'warning',
+        duration: 5000
+      });
 
     }
 
@@ -565,7 +585,7 @@ export default function Dashboard() {
     volume24h: livePriceData?.volume24h || 0,
     volumePeriod: livePriceData?.volume24h || 0,
     quantScore: 50,
-    signal: 'Sincronizando',
+    signal: 'Mantener',
     indicators: {},
     sentiment: { fearGreedIndex: 50, fearGreedLabel: 'Neutral' },
     onChain: {},

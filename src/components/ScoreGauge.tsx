@@ -167,7 +167,7 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
         className={`signal-badge mt-1 ${getSignalBadgeClass(signal)}`}
         style={{ fontSize: '0.85rem', padding: '8px 20px' }}
       >
-        {getSignalEmoji(signal)} {t(SIGNAL_KEY_MAP[signal])}
+        {getSignalEmoji(signal)} {t(SIGNAL_KEY_MAP[signal] || 'signal.hold')}
       </div>
     </div>
   );
@@ -193,6 +193,7 @@ function getSignalBadgeClass(signal: Signal): string {
     case 'Mantener': return 'signal-badge--mantener';
     case 'Venta': return 'signal-badge--venta';
     case 'Venta Fuerte': return 'signal-badge--venta-fuerte';
+    default: return 'signal-badge--mantener';
   }
 }
 
