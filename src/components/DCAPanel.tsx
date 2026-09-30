@@ -312,10 +312,10 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
                 boxShadow: `0 4px 15px ${themeColor}40`
               }}
             >
-              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
               {isPaperTrading ? (
                 <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span className="block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Ejecutando en simulador...
                 </span>
               ) : (

@@ -153,7 +153,7 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
           disabled={loading || !symbol}
           className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 h-[38px]"
         >
-          {loading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Play size={16} />}
+          {loading ? <span className="block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Play size={16} />}
           Ejecutar Backtest
         </button>
       </div>
