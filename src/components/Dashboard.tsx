@@ -79,6 +79,8 @@ export default function Dashboard() {
 
   const [data, setData] = useState<MarketAnalysis | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const [searchInput, setSearchInput] = useState(symbol);
 
@@ -579,11 +581,11 @@ export default function Dashboard() {
     const displayData = data || {
     symbol,
     name: symbol,
-    currentPrice: livePriceData?.price || 0,
-    priceChange24h: livePriceData?.priceChange24h || 0,
+    currentPrice: mounted ? (livePriceData?.price || 0) : 0,
+    priceChange24h: mounted ? (livePriceData?.priceChange24h || 0) : 0,
     priceChangePeriod: livePriceData?.priceChange24h || 0,
-    volume24h: livePriceData?.volume24h || 0,
-    volumePeriod: livePriceData?.volume24h || 0,
+    volume24h: mounted ? (livePriceData?.volume24h || 0) : 0,
+    volumePeriod: mounted ? (livePriceData?.volume24h || 0) : 0,
     quantScore: 50,
     signal: 'Mantener',
     indicators: {},
