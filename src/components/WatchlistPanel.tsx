@@ -114,10 +114,10 @@ export default function WatchlistPanel() {
                   }}
                   className="w-full flex items-center justify-between p-2 rounded hover:bg-white/5 transition-colors text-sm"
                 >
-                  <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2">
                     <span className="font-bold">{c.symbol}</span>
                     <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{c.name}</span>
-                  </div>
+                  </span>
                   <Plus size={14} />
                 </button>
               ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { ActionableData } from '@/types';
 import { useLocale } from './AppContext';
 import { useAppStore } from '@/lib/store';
@@ -25,8 +25,10 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
   const [totalCapital, setTotalCapital] = useState<number>(1000);
   const [strategy, setStrategy] = useState<AllocationStrategy>('pyramidal');
   const [copiedLevel, setCopiedLevel] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
-  if (!actionableData) return null;
+  if (!mounted || !actionableData) return null;
   const { dcaLevels = [], optimalEntry, takeProfit, stopLoss, riskLevel } = actionableData;
   const isBuying = dcaLevels.length > 0 && dcaLevels[0].type === 'compra';
 

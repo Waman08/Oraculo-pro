@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
 import { Droplet, Activity, Users, Flame } from 'lucide-react';
 import type { LiquidityData } from '@/types';
@@ -11,6 +12,10 @@ interface LiquidityPanelProps {
 export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
   const { t } = useLocale();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
   if (!liquidity) {
     return (
       <div className="glass-card p-5 animate-fadeInUp flex flex-col justify-center items-center h-full border border-[var(--border-color)]">

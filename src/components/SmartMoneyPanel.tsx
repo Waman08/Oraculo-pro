@@ -1,6 +1,7 @@
 "use client";
 
 import type { SmartMoneyData } from '@/types';
+import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
 import { Target, Layers, TrendingUp, TrendingDown, Eye, CheckCircle2 } from 'lucide-react';
 
@@ -12,6 +13,10 @@ interface SmartMoneyPanelProps {
 export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoneyPanelProps) {
   const { t } = useLocale();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
   if (!smartMoney) {
     return null;
   }

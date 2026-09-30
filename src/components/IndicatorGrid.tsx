@@ -1,6 +1,7 @@
 "use client";
 
 import type { ScoreBreakdown } from '@/types';
+import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
 import { TrendingUp, Zap, Brain, Link2 } from 'lucide-react';
 
@@ -32,6 +33,10 @@ const CATEGORY_COLORS = {
 export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
   const { t } = useLocale();
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
   if (!breakdown) return null;
 
   const categories = [

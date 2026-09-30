@@ -409,10 +409,10 @@ function TelegramConfig({ botStatus }: { botStatus: string }) {
         onClick={() => setShowTg(!showTg)}
         className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-white/5 transition-colors group"
       >
-        <div className="flex items-center gap-2 text-xs font-bold text-white/70 group-hover:text-white transition-colors">
+        <span className="flex items-center gap-2 text-xs font-bold text-white/70 group-hover:text-white transition-colors">
           <Settings size={14} className={botStatus === 'running' ? 'text-emerald-400' : 'text-white/40'} />
           Conexión con Telegram
-        </div>
+        </span>
         <ChevronDown size={14} className={`text-white/40 transition-transform duration-300 ${showTg ? 'rotate-180' : ''}`} />
       </button>
 

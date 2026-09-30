@@ -723,7 +723,7 @@ export default function Dashboard() {
 
                 >
 
-                  <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2">
 
                     <span className="font-bold">{crypto.symbol}</span>
 
@@ -739,7 +739,7 @@ export default function Dashboard() {
 
                     )}
 
-                  </div>
+                  </span>
 
                   <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
 

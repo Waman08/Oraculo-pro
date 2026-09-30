@@ -21,6 +21,8 @@ const SIGNAL_KEY_MAP: Record<Signal, string> = {
 export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProps) {
   const { t } = useLocale();
   const [displayScore, setDisplayScore] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const timer = setTimeout(() => setDisplayScore(score), 50);
