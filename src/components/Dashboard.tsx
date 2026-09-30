@@ -583,7 +583,7 @@ export default function Dashboard() {
     name: symbol,
     currentPrice: mounted ? (livePriceData?.price || 0) : 0,
     priceChange24h: mounted ? (livePriceData?.priceChange24h || 0) : 0,
-    priceChangePeriod: livePriceData?.priceChange24h || 0,
+    priceChangePeriod: mounted ? (livePriceData?.priceChange24h || 0) : 0,
     volume24h: mounted ? (livePriceData?.volume24h || 0) : 0,
     volumePeriod: mounted ? (livePriceData?.volume24h || 0) : 0,
     quantScore: 50,
