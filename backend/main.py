@@ -523,7 +523,7 @@ from sector_map import SECTOR_MAP
 async def screener(
     timeframe: str = Query("1D"),
     mode: str = Query("Balanceado"),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(100, ge=1, le=100),
 ):
     """
     Screener: return top symbols sorted by quant score.

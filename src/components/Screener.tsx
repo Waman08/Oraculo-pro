@@ -2,12 +2,11 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { fetchPythonScreener } from '@/lib/api';
-import type { Timeframe, Signal, ScreenerEntry } from '@/types';
+import type { Signal, ScreenerEntry } from '@/types';
 import { useAppSettings, useLocale } from './AppContext';
-import { TrendingUp, TrendingDown, Filter, RefreshCw, Wifi, WifiOff, ArrowUp, ArrowDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Filter, RefreshCw, Search, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 
 const SECTOR_KEYS = ['all', 'Layer 1', 'Layer 2', 'AI & Big Data', 'DeFi', 'Memecoins', 'Gaming', 'RWA & Oracles', 'Otros'];
-const SIGNAL_FILTER_KEYS: (Signal | 'all')[] = ['all', 'Compra Fuerte', 'Compra', 'Mantener', 'Venta', 'Venta Fuerte'];
 
 const SIGNAL_I18N: Record<Signal | 'all', string> = {
   'all': 'screener.all',
@@ -18,403 +17,325 @@ const SIGNAL_I18N: Record<Signal | 'all', string> = {
   'Venta Fuerte': 'signal.strongSell',
 };
 
+type SortCol = 'score' | 'symbol' | 'price' | 'change' | 'rsi';
+
 export default function Screener() {
-  const { timeframe, setTimeframe, mode } = useAppSettings();
+  const { timeframe, setTimeframe, mode, setSymbol, setActiveTab } = useAppSettings();
   const { t } = useLocale();
-  const [signalFilter, setSignalFilter] = useState<Signal | 'all'>('all');
+  
   const [sectorFilter, setSectorFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'score' | 'rsi' | 'change'>('score');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [screenerData, setScreenerData] = useState<ScreenerEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [alphaFilter, setAlphaFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Default to score desc
+  const [sortBy, setSortBy] = useState<SortCol>('score');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  const [data, setData] = useState<ScreenerEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [isBackendOnline, setIsBackendOnline] = useState(false);
 
-  const [retryCount, setRetryCount] = useState(0);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  // Fetch screener data from Python backend
   const fetchData = useCallback(async () => {
+    // SWR: Load from cache first
+    const cacheKey = `screener_cache_${timeframe}_${mode}`;
+    const cachedData = localStorage.getItem(cacheKey);
+    if (cachedData && data.length === 0) {
+      try {
+        setData(JSON.parse(cachedData));
+      } catch (e) {}
+    }
+
     setIsLoading(true);
-    setErrorMessage(null);
     try {
-      const data = await fetchPythonScreener(timeframe, mode, 50);
-      if (data && data.length > 0) {
-        // Map backend response to ScreenerEntry format
-        const entries: ScreenerEntry[] = data.map((item: any, idx: number) => ({
-          rank: item.rank ?? idx + 1,
-          symbol: item.symbol,
-          name: item.name || item.symbol,
-          sector: item.sector || 'Otros',
-          price: item.price,
-          priceChange24h: item.priceChange24h,
-          rsi: item.rsi ?? 50,
-          quantScore: item.quantScore,
-          signal: item.signal as Signal,
-          volume24h: item.volume24h,
-          sparklineData: item.sparklineData || [],
-        }));
-        setScreenerData(entries);
-        setIsBackendOnline(true);
-        setLastUpdate(new Date());
-        setRetryCount(0);
-      } else {
-        // Backend returned empty — cache is still building
-        setScreenerData([]);
-        setIsBackendOnline(true);
+      const screenerData = await fetchPythonScreener(timeframe, mode, 100);
+      if (screenerData && Array.isArray(screenerData)) {
+        setData(screenerData);
+        localStorage.setItem(cacheKey, JSON.stringify(screenerData));
         setLastUpdate(new Date());
       }
-    } catch (err) {
-      // Network error or timeout — don't crash, show message
-      setScreenerData([]);
-      setIsBackendOnline(false);
-      setErrorMessage('El backend está arrancando. Reintentando automáticamente...');
-      setLastUpdate(new Date());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeframe, mode]);
 
-  // Initial fetch + auto-retry every 15s when data is empty
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 60000); // 1 min update
+    return () => clearInterval(interval);
   }, [fetchData]);
 
-  useEffect(() => {
-    // If we have data, no need to retry
-    if (screenerData.length > 0) return;
-
-    // Auto-retry every 15 seconds up to 40 times (10 min)
-    if (retryCount >= 40) return;
-
-    const timer = setTimeout(() => {
-      setRetryCount(prev => prev + 1);
-      fetchData();
-    }, 15000);
-
-    return () => clearTimeout(timer);
-  }, [screenerData.length, retryCount, fetchData]);
-
-  // Handle column header click: toggle sort
-  const handleSort = (col: 'score' | 'rsi' | 'change') => {
+  const handleSort = (col: SortCol) => {
     if (sortBy === col) {
-      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(col);
-      setSortOrder('asc');
+      setSortOrder(col === 'symbol' ? 'asc' : 'desc');
     }
   };
 
   const filteredData = useMemo(() => {
-    let result = [...screenerData];
+    let filtered = [...data];
+
+    // Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(item => 
+        item.symbol.toLowerCase().includes(q) || 
+        (item.name && item.name.toLowerCase().includes(q))
+      );
+    }
+
+    // Sector
     if (sectorFilter !== 'all') {
-      result = result.filter(e => e.sector === sectorFilter);
+      filtered = filtered.filter((item) => item.sector === sectorFilter);
     }
-    if (signalFilter !== 'all') {
-      result = result.filter(e => e.signal === signalFilter);
+
+    // Alpha Presets
+    if (alphaFilter === 'confluence') {
+      filtered = filtered.filter(item => (item.quantScore || 0) >= 70 && (item.rsi || 50) <= 60);
+    } else if (alphaFilter === 'oversold') {
+      filtered = filtered.filter(item => (item.rsi || 50) <= 35);
+    } else if (alphaFilter === 'overbought') {
+      filtered = filtered.filter(item => (item.rsi || 50) >= 68 || (item.quantScore || 50) <= 35);
+    } else if (alphaFilter === 'volume') {
+      // Sort by volume if available, top 15
+      filtered = filtered.sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0)).slice(0, 15);
     }
-    const multiplier = sortOrder === 'asc' ? 1 : -1;
-    result.sort((a, b) => {
+
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal: any = 0;
+      let bVal: any = 0;
       switch (sortBy) {
-        case 'score': return (a.quantScore - b.quantScore) * multiplier;
-        case 'rsi': return (a.rsi - b.rsi) * multiplier;
-        case 'change': return (a.priceChange24h - b.priceChange24h) * multiplier;
-        default: return 0;
+        case 'score': aVal = a.quantScore || 0; bVal = b.quantScore || 0; break;
+        case 'symbol': aVal = a.symbol; bVal = b.symbol; break;
+        case 'price': aVal = a.price || 0; bVal = b.price || 0; break;
+        case 'change': aVal = a.priceChange24h || 0; bVal = b.priceChange24h || 0; break;
+        case 'rsi': aVal = a.rsi || 50; bVal = b.rsi || 50; break;
       }
+      
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
+        return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
-    return result;
-  }, [screenerData, signalFilter, sectorFilter, sortBy, sortOrder]);
 
-  const signalCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: screenerData.length };
-    screenerData.forEach(e => {
-      counts[e.signal] = (counts[e.signal] || 0) + 1;
-    });
-    return counts;
-  }, [screenerData]);
+    return filtered;
+  }, [data, sectorFilter, alphaFilter, searchQuery, sortBy, sortOrder]);
 
-  const timeframes: Timeframe[] = ['1S', '1D', '4H', '1H', '15M'];
-
-  const SortIcon = ({ col }: { col: string }) => {
-    if (sortBy !== col) return null;
-    return sortOrder === 'asc'
-      ? <ArrowUp size={10} className="inline ml-0.5" />
-      : <ArrowDown size={10} className="inline ml-0.5" />;
+  const SortIcon = ({ col }: { col: SortCol }) => {
+    if (sortBy !== col) return <ArrowDown size={12} className="inline opacity-0 group-hover:opacity-30" />;
+    return sortOrder === 'asc' ? <ArrowUp size={12} className="inline text-[var(--accent-gold)]" /> : <ArrowDown size={12} className="inline text-[var(--accent-gold)]" />;
   };
 
   return (
-    <div className="w-full animate-fadeInUp">
-      <div className="text-center mb-6">
-        <h2 className="text-xl font-black mb-1" style={{ color: 'var(--accent-gold)' }}>
-          {t('screener.title')}
-        </h2>
-        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-          {t('screener.subtitle')}
-        </p>
-        <div className="flex items-center justify-center gap-2 mt-2">
-          <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-full`}
-            style={{
-              color: isBackendOnline ? 'var(--signal-buy)' : 'var(--text-muted)',
-              background: isBackendOnline ? 'var(--signal-buy-dim)' : 'var(--bg-tertiary)',
-            }}>
-            {isBackendOnline ? <Wifi size={9} /> : <WifiOff size={9} />}
-            {isBackendOnline ? 'LIVE' : 'MOCK'}
-          </span>
-          {lastUpdate && (
-            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-              {lastUpdate.toLocaleTimeString()}
-            </span>
-          )}
-          <button
-            onClick={fetchData}
-            className="text-[10px] flex items-center gap-1 px-2 py-0.5 rounded-full transition-colors"
-            style={{ color: 'var(--accent-gold)', background: 'var(--accent-gold-dim)' }}
-            disabled={isLoading}
-          >
-            <RefreshCw size={9} className={isLoading ? 'animate-spin' : ''} />
-            {isLoading ? '...' : '↻'}
-          </button>
+    <div className="space-y-6">
+      {/* Top Bar: Title & Search */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold font-mono tracking-tight text-[var(--text-primary)]">
+            Quantitative Screener <span className="text-[var(--accent-gold)]">Top 100</span>
+          </h2>
+          <p className="text-sm text-[var(--text-muted)] flex items-center gap-2 mt-1">
+            {lastUpdate ? `Actualizado: ${lastUpdate.toLocaleTimeString()}` : 'Cargando datos...'}
+            <button onClick={() => fetchData()} className="hover:text-[var(--text-primary)] transition-colors">
+              <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
+            </button>
+          </p>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative w-full md:w-64">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={16} className="text-gray-500" />
+          </div>
+          <input
+            type="text"
+            className="w-full pl-10 pr-4 py-2 bg-black/40 border border-white/10 rounded-xl text-sm focus:border-[var(--accent-gold)] focus:ring-1 focus:ring-[var(--accent-gold)] focus:outline-none transition-all placeholder-gray-500 text-white"
+            placeholder="Buscar activo..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
       </div>
 
-      {/* Timeframe Selector */}
-      <div className="flex justify-center gap-2 mb-4">
-        {timeframes.map(tf => (
+      {/* Alpha Filters */}
+      <div className="flex flex-wrap gap-2">
+        <AlphaChip id="all" label="🌟 Todos" active={alphaFilter === 'all'} onClick={() => setAlphaFilter('all')} />
+        <AlphaChip id="confluence" label="💎 Confluencia Compra" active={alphaFilter === 'confluence'} onClick={() => setAlphaFilter('confluence')} />
+        <AlphaChip id="oversold" label="⚡ Sobreventa Extrema" active={alphaFilter === 'oversold'} onClick={() => setAlphaFilter('oversold')} />
+        <AlphaChip id="overbought" label="⚠️ Sobrecompra / Riesgo" active={alphaFilter === 'overbought'} onClick={() => setAlphaFilter('overbought')} />
+        <AlphaChip id="volume" label="🔥 Mayor Volumen" active={alphaFilter === 'volume'} onClick={() => setAlphaFilter('volume')} />
+      </div>
+
+      {/* Sector Filters (Existing) */}
+      <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
+        {SECTOR_KEYS.map((sector) => (
           <button
-            key={tf}
-            onClick={() => setTimeframe(tf)}
-            className={`tab-button ${timeframe === tf ? 'tab-button--active' : ''}`}
-            id={`screener-tf-${tf}`}
+            key={sector}
+            onClick={() => setSectorFilter(sector)}
+            className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+              sectorFilter === sector
+                ? 'bg-[var(--accent-gold)] text-black'
+                : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-white'
+            }`}
           >
-            {t(`tf.${tf}`)}
+            {sector === 'all' ? t('screener.all') : sector}
           </button>
         ))}
       </div>
 
-      {/* Filters (Sector & Signal) */}
-      <div className="flex flex-col items-center gap-4 mb-6">
-        {/* Sector Filter */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {SECTOR_KEYS.map(sec => {
-            const count = sec === 'all' 
-              ? screenerData.length 
-              : screenerData.filter(e => e.sector === sec).length;
-              
-            // Hide empty sectors from UI if they have 0 coins (except 'all')
-            if (sec !== 'all' && count === 0) return null;
-
-            return (
-              <button
-                key={sec}
-                onClick={() => setSectorFilter(sec)}
-                className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
-                style={{
-                  background: sectorFilter === sec ? 'var(--accent-gold)' : 'var(--bg-secondary)',
-                  color: sectorFilter === sec ? '#000' : 'var(--text-muted)',
-                  border: `1px solid ${sectorFilter === sec ? 'var(--accent-gold)' : 'var(--border-color)'}`,
-                }}
-              >
-                {sec === 'all' ? 'All Sectors' : sec} <span className="opacity-70 font-normal">({count})</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Signal Filter Pills */}
-        <div className="flex flex-wrap justify-center gap-2">
-          {SIGNAL_FILTER_KEYS.map(sig => (
-          <button
-            key={sig}
-            onClick={() => setSignalFilter(sig)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full transition-all"
-            style={{
-              background: signalFilter === sig ? getSignalBg(sig) : 'var(--bg-secondary)',
-              color: signalFilter === sig ? getSignalColor(sig) : 'var(--text-muted)',
-              border: `1px solid ${signalFilter === sig ? getSignalColor(sig) + '66' : 'var(--border-color)'}`,
-            }}
-          >
-            {getSignalEmoji(sig)} {t(SIGNAL_I18N[sig])} ({signalCounts[sig] || 0})
-          </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Loading & Initializing State */}
-      {screenerData.length === 0 && (
-        <div className="glass-card py-12 text-center">
-          <RefreshCw size={24} className="mx-auto mb-3 animate-spin" style={{ color: 'var(--accent-gold)' }} />
-          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>
-            {isLoading ? 'Analizando mercado con IA cuantitativa...' : 'El motor cuántico está inicializando el caché...'}
-          </p>
-          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            {errorMessage || 'Escaneando los 100 activos principales. Esto puede tardar ~2 minutos en el primer arranque.'}
-          </p>
-          {retryCount > 0 && (
-            <p className="text-xs mt-2" style={{ color: 'var(--accent-gold)' }}>
-              🔄 Reintento automático {retryCount}/40
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Table */}
-      {(!isLoading || screenerData.length > 0) && (
-        <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <div className="min-w-[640px]">
-              {/* Table Header */}
-              <div
-                className="grid gap-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider"
-                style={{
-                  gridTemplateColumns: '40px 1fr 100px 80px 70px 70px 100px',
-                  background: 'var(--bg-tertiary)',
-                  color: 'var(--text-muted)',
-                  borderBottom: '1px solid var(--border-color)',
-                }}
-              >
-                <div>{t('screener.rank')}</div>
-                <div>{t('screener.crypto')}</div>
-                <div className="text-right">{t('screener.price')}</div>
-                <div
-                  className="text-right cursor-pointer hover:opacity-80 select-none"
-                  onClick={() => handleSort('change')}
-                  style={{ color: sortBy === 'change' ? 'var(--accent-gold)' : undefined }}
-                >
-                  {t('screener.change')} <SortIcon col="change" />
-                </div>
-                <div
-                  className="text-right cursor-pointer hover:opacity-80 select-none"
-                  onClick={() => handleSort('rsi')}
-                  style={{ color: sortBy === 'rsi' ? 'var(--accent-gold)' : undefined }}
-                >
-                  {t('screener.rsi')} <SortIcon col="rsi" />
-                </div>
-                <div
-                  className="text-right cursor-pointer hover:opacity-80 select-none"
-                  onClick={() => handleSort('score')}
-                  style={{ color: sortBy === 'score' ? 'var(--accent-gold)' : undefined }}
-                >
-                  {t('screener.score')} <SortIcon col="score" />
-                </div>
-                <div className="text-center">{t('screener.signal')}</div>
+      {/* Table Container */}
+      <div className="glass-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <div className="min-w-[700px]">
+            {/* Header */}
+            <div
+              className="grid gap-2 px-4 py-3 text-xs font-bold tracking-wider uppercase bg-black/20 select-none"
+              style={{
+                gridTemplateColumns: '40px 1.5fr 100px 80px 70px 70px 120px',
+                borderBottom: '1px solid var(--border-color)',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <div className="text-center cursor-default">Rank</div>
+              <div className="cursor-pointer hover:text-white group flex items-center gap-1" onClick={() => handleSort('symbol')}>
+                Símbolo <SortIcon col="symbol" />
               </div>
+              <div className="text-right cursor-pointer hover:text-white group flex items-center justify-end gap-1" onClick={() => handleSort('price')}>
+                <SortIcon col="price" /> {t('screener.price')}
+              </div>
+              <div className="text-right cursor-pointer hover:text-white group flex items-center justify-end gap-1" onClick={() => handleSort('change')}>
+                <SortIcon col="change" /> {t('screener.24h')}
+              </div>
+              <div className="text-right cursor-pointer hover:text-white group flex items-center justify-end gap-1" onClick={() => handleSort('rsi')}>
+                <SortIcon col="rsi" /> {t('screener.rsi')}
+              </div>
+              <div className="text-right cursor-pointer hover:text-[var(--accent-gold)] group flex items-center justify-end gap-1" onClick={() => handleSort('score')}>
+                <SortIcon col="score" /> {t('screener.score')}
+              </div>
+              <div className="text-center">{t('screener.signal')}</div>
+            </div>
 
-              {/* Table Body */}
-              <div className="stagger-children">
-                {filteredData.map((entry, idx) => (
-                  <div
-                    key={entry.symbol}
-                    className="grid gap-2 px-4 py-3 text-sm items-center transition-colors cursor-pointer hover:bg-[var(--bg-tertiary)]"
+            {/* Body */}
+            <div className="stagger-children max-h-[600px] overflow-y-auto custom-scrollbar">
+              {filteredData.map((entry, idx) => (
+                <div
+                  key={entry.symbol}
+                  onClick={() => {
+                    setSymbol(entry.symbol);
+                    setActiveTab('analysis');
+                  }}
+                  className="group grid gap-2 px-4 py-3 text-sm items-center transition-all cursor-pointer hover:bg-white/5 border-b border-white/5 last:border-0"
+                  style={{
+                    gridTemplateColumns: '40px 1.5fr 100px 80px 70px 70px 120px',
+                    color: 'var(--text-primary)',
+                  }}
+                >
+                  {/* Rank */}
+                  <div className="text-xs font-mono text-center text-gray-500">
+                    {idx + 1}
+                  </div>
+
+                  {/* Crypto */}
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-base group-hover:text-[var(--accent-gold)] transition-colors flex items-center gap-1">
+                      {entry.symbol} <ExternalLink size={12} className="opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </span>
+                    <span className="text-xs text-gray-500 hidden sm:inline truncate max-w-[80px]">
+                      {entry.name}
+                    </span>
+                  </div>
+
+                  {/* Price */}
+                  <div className="text-right font-mono text-sm">
+                    ${formatPrice(entry.price)}
+                  </div>
+
+                  {/* Change */}
+                  <div className="text-right">
+                    <span
+                      className="text-xs font-mono font-semibold flex items-center justify-end gap-0.5"
+                      style={{
+                        color: (entry.priceChange24h || 0) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
+                      }}
+                    >
+                      {(entry.priceChange24h || 0) >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                      {(entry.priceChange24h || 0) >= 0 ? '+' : ''}{typeof entry.priceChange24h === 'number' ? entry.priceChange24h.toFixed(2) : '0.00'}%
+                    </span>
+                  </div>
+
+                  {/* RSI */}
+                  <div className="text-right font-mono font-bold text-xs"
                     style={{
-                      gridTemplateColumns: '40px 1fr 100px 80px 70px 70px 100px',
-                      borderBottom: '1px solid var(--border-color)',
-                      color: 'var(--text-primary)',
+                      color: (entry.rsi || 50) < 30 ? 'var(--signal-buy)' : (entry.rsi || 50) > 70 ? 'var(--signal-sell)' : 'var(--text-secondary)',
                     }}
                   >
-                    {/* Rank */}
-                    <div className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
-                      {idx + 1}
-                    </div>
+                    {typeof entry.rsi === 'number' ? entry.rsi.toFixed(1) : '50.0'}
+                  </div>
 
-                    {/* Crypto */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold">{entry.symbol}</span>
-                      <span className="text-xs hidden sm:inline" style={{ color: 'var(--text-muted)' }}>
-                        {entry.name}
-                      </span>
-                      {entry.sector && entry.sector !== 'Otros' && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded-sm uppercase tracking-wider" 
-                          style={{ background: 'var(--bg-tertiary)', color: 'var(--accent-gold)' }}>
-                          {entry.sector}
-                        </span>
-                      )}
-                      {/* Mini Sparkline */}
-                      {entry.sparklineData && entry.sparklineData.length > 0 && (
-                        <div className="hidden md:flex items-end gap-px h-4 ml-2">
-                          {entry.sparklineData.map((val: number, i: number) => {
-                            const min = Math.min(...entry.sparklineData);
-                            const max = Math.max(...entry.sparklineData);
-                            const range = max - min || 1;
-                            const height = ((val - min) / range) * 16 + 2;
-                            const isLast = i === entry.sparklineData.length - 1;
-                            return (
-                              <div
-                                key={i}
-                                className="rounded-sm"
-                                style={{
-                                  width: '3px',
-                                  height: `${height}px`,
-                                  background: entry.priceChange24h >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
-                                  opacity: isLast ? 1 : 0.5,
-                                }}
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Price */}
-                    <div className="text-right font-mono text-xs">
-                      ${formatPrice(entry.price)}
-                    </div>
-
-                    {/* Change */}
-                    <div className="text-right">
-                      <span
-                        className="text-xs font-semibold flex items-center justify-end gap-0.5"
-                        style={{
-                          color: (entry.priceChange24h || 0) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)',
-                        }}
-                      >
-                        {(entry.priceChange24h || 0) >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                        {(entry.priceChange24h || 0) >= 0 ? '+' : ''}{typeof entry.priceChange24h === 'number' ? entry.priceChange24h.toFixed(1) : '0.0'}%
-                      </span>
-                    </div>
-
-                    {/* RSI */}
-                    <div className="text-right">
-                      <span
-                        className="text-xs font-bold"
-                        style={{
-                          color: (entry.rsi || 50) < 30 ? 'var(--signal-buy)' : (entry.rsi || 50) > 70 ? 'var(--signal-sell)' : 'var(--text-secondary)',
-                        }}
-                      >
-                        {typeof entry.rsi === 'number' ? entry.rsi.toFixed(1) : '50.0'}
-                      </span>
-                    </div>
-
-                    {/* Score */}
-                    <div className="text-right">
-                      <div className="font-mono font-bold text-base" style={{ color: getScoreColor(entry.quantScore) }}>
-                        {typeof entry.quantScore === 'number' ? entry.quantScore.toFixed(1) : '50.0'}
-                      </div>
-                    </div>
-
-                    {/* Signal */}
-                    <div className="text-center">
-                      <span className={`signal-badge text-[10px] py-1 px-2 ${getSignalBadgeClass(entry.signal)}`}>
-                        {getSignalEmoji(entry.signal)} {t(SIGNAL_I18N[entry.signal])}
-                      </span>
+                  {/* Score */}
+                  <div className="text-right flex justify-end">
+                    <div className="font-mono font-bold text-sm px-2 py-0.5 rounded" style={{ 
+                      color: getScoreColor(entry.quantScore),
+                      background: `${getScoreColor(entry.quantScore)}15`,
+                      border: `1px solid ${getScoreColor(entry.quantScore)}30`
+                    }}>
+                      {typeof entry.quantScore === 'number' ? entry.quantScore.toFixed(1) : '50.0'}
                     </div>
                   </div>
-                ))}
-              </div>
 
-              {filteredData.length === 0 && !isLoading && (
-                <div className="py-8 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
-                  <Filter size={20} className="mx-auto mb-2 opacity-50" />
-                  {t('general.noFilter')}
+                  {/* Signal */}
+                  <div className="text-center">
+                    <span className={`signal-badge text-[10px] py-1 px-2 ${getSignalBadgeClass(entry.signal)}`}>
+                      {getSignalEmoji(entry.signal)} {t(SIGNAL_I18N[entry.signal] || 'signal.hold')}
+                    </span>
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
+
+            {filteredData.length === 0 && (
+              <div className="py-12 text-center text-sm" style={{ color: 'var(--text-muted)' }}>
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="w-6 h-6 border-2 border-white/20 border-t-[var(--accent-gold)] rounded-full animate-spin mb-3"></div>
+                    Cargando screener top 100...
+                  </div>
+                ) : (
+                  <>
+                    <Filter size={24} className="mx-auto mb-3 opacity-30" />
+                    No se encontraron activos con estos filtros.
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-// ---- Helpers ----
+// ---- Subcomponents & Helpers ----
+
+function AlphaChip({ id, label, active, onClick }: { id: string, label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+        active 
+          ? 'bg-blue-500/20 border-blue-500/50 text-blue-400 shadow-[0_0_10px_rgba(59,130,246,0.2)]' 
+          : 'bg-black/40 border-white/10 text-gray-400 hover:bg-white/5 hover:text-white'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
 
 function formatPrice(price: number): string {
   if (price === undefined || price === null || isNaN(price)) return '0.00';
@@ -425,43 +346,20 @@ function formatPrice(price: number): string {
 }
 
 function getScoreColor(score: number): string {
-  if (score <= 20) return '#10B981';
-  if (score <= 40) return '#34D399';
-  if (score <= 60) return '#94A3B8';
-  if (score <= 80) return '#FB923C';
-  return '#EF4444';
-}
-
-function getSignalColor(signal: Signal | 'all'): string {
-  switch (signal) {
-    case 'Compra Fuerte': return '#10B981';
-    case 'Compra': return '#34D399';
-    case 'Mantener': return '#94A3B8';
-    case 'Venta': return '#FB923C';
-    case 'Venta Fuerte': return '#EF4444';
-    default: return 'var(--accent-gold)';
-  }
-}
-
-function getSignalBg(signal: Signal | 'all'): string {
-  switch (signal) {
-    case 'Compra Fuerte':
-    case 'Compra': return 'rgba(16,185,129,0.15)';
-    case 'Mantener': return 'rgba(148,163,184,0.1)';
-    case 'Venta':
-    case 'Venta Fuerte': return 'rgba(239,68,68,0.15)';
-    default: return 'var(--accent-gold-dim)';
-  }
+  if (score === undefined || score === null || isNaN(score)) return '#94A3B8';
+  if (score >= 70) return '#10B981'; // Compra fuerte / Compra
+  if (score <= 35) return '#EF4444'; // Venta fuerte / Venta
+  return '#F59E0B'; // Neutral
 }
 
 function getSignalEmoji(signal: Signal | 'all'): string {
   switch (signal) {
-    case 'Compra Fuerte': return '🟢';
-    case 'Compra': return '🟡';
+    case 'Compra Fuerte': return '✨';
+    case 'Compra': return '🟢';
     case 'Mantener': return '⚪';
-    case 'Venta': return '🟠';
-    case 'Venta Fuerte': return '🔴';
-    default: return '📊';
+    case 'Venta': return '🔴';
+    case 'Venta Fuerte': return '🚨';
+    default: return '⚪';
   }
 }
 
@@ -472,7 +370,6 @@ function getSignalBadgeClass(signal: Signal): string {
     case 'Mantener': return 'signal-badge--mantener';
     case 'Venta': return 'signal-badge--venta';
     case 'Venta Fuerte': return 'signal-badge--venta-fuerte';
+    default: return 'signal-badge--mantener';
   }
 }
-
-

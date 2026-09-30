@@ -829,7 +829,7 @@ export async function fetchPythonScreener(
 
   mode: string = 'Balanceado',
 
-  limit: number = 50,
+  limit: number = 100,
 
 ): Promise<any[] | null> {
 
