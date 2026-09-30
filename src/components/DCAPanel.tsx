@@ -3,20 +3,25 @@
 import React, { useState, useMemo } from 'react';
 import type { ActionableData } from '@/types';
 import { useLocale } from './AppContext';
+import { useAppStore } from '@/lib/store';
 import { 
   ArrowDown, ArrowUp, 
-  Calculator, Copy, Check, DollarSign, PieChart, Activity
+  Calculator, Copy, Check, DollarSign, PieChart, Activity, Zap
 } from 'lucide-react';
 
 interface DCAPanelProps {
   actionableData: ActionableData;
   currentPrice: number;
+  symbol: string;
 }
 
 type AllocationStrategy = 'equitable' | 'pyramidal' | 'atr';
 
-export default function DCAPanel({ actionableData, currentPrice }: DCAPanelProps) {
+export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPanelProps) {
   const { t } = useLocale();
+  const addToast = useAppStore(state => state.addToast);
+  const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
+  const [isPaperTrading, setIsPaperTrading] = useState(false);
   const [totalCapital, setTotalCapital] = useState<number>(1000);
   const [strategy, setStrategy] = useState<AllocationStrategy>('pyramidal');
   const [copiedLevel, setCopiedLevel] = useState<number | null>(null);
@@ -86,6 +91,48 @@ export default function DCAPanel({ actionableData, currentPrice }: DCAPanelProps
   };
 
   const PRESETS = [250, 500, 1000, 5000];
+
+  const handlePaperTrade = async () => {
+    setIsPaperTrading(true);
+    try {
+      const sizeUsd = actionableData?.positionSizing?.recommendedSizeUSD || 100;
+      const payload = {
+        session_id: 'default_session',
+        symbol,
+        side: isBuying ? 'BUY' : 'SELL',
+        price: currentPrice,
+        size_usd: sizeUsd,
+        stop_loss: stopLoss,
+        take_profit: takeProfit
+      };
+      
+      const res = await fetch(`${PYTHON_API_URL}/api/paper/order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok) {
+        addToast({
+          title: 'Paper Trade Ejecutado',
+          message: `Posición ${payload.side} abierta por $${sizeUsd} en ${symbol}`,
+          type: 'success'
+        });
+      } else {
+        throw new Error(data.detail || 'Error al ejecutar orden');
+      }
+    } catch (e: any) {
+      addToast({
+        title: 'Error en Paper Trade',
+        message: e.message || 'No se pudo contactar con el motor',
+        type: 'error'
+      });
+    } finally {
+      setIsPaperTrading(false);
+    }
+  };
 
   return (
     <div className="glass-card p-5 animate-fadeInUp">
@@ -251,6 +298,35 @@ export default function DCAPanel({ actionableData, currentPrice }: DCAPanelProps
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Paper Trading Quick Action */}
+          <div className="mt-6 pt-4 border-t border-white/10">
+            <button 
+              onClick={handlePaperTrade}
+              disabled={isPaperTrading}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-bold transition-all relative overflow-hidden group"
+              style={{
+                background: `linear-gradient(90deg, ${themeColor}, ${themeDim})`,
+                boxShadow: `0 4px 15px ${themeColor}40`
+              }}
+            >
+              <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+              {isPaperTrading ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Ejecutando en simulador...
+                </span>
+              ) : (
+                <>
+                  <Zap size={18} className="text-white" />
+                  <span>⚡ Abrir Paper Trade por ${actionableData?.positionSizing?.recommendedSizeUSD || 100}</span>
+                </>
+              )}
+            </button>
+            <div className="text-center mt-2 text-[10px] text-gray-500">
+              Usa el saldo demo de $10.000 para auditar la estrategia en vivo
             </div>
           </div>
         </>
