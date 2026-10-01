@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchPythonScreener } from '@/lib/api';
+import { fetchPythonScreener, fetchAllBinancePrices } from '@/lib/api';
 import type { Signal, ScreenerEntry } from '@/types';
+import { generateFullAnalysis } from '@/lib/ml-engine';
+import { CRYPTO_DATABASE } from '@/lib/mock-data';
 import { useAppSettings, useLocale } from './AppContext';
 import { TrendingUp, TrendingDown, Filter, RefreshCw, Search, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 
@@ -39,25 +41,72 @@ export default function Screener() {
     // SWR: Load from cache first
     const cacheKey = `screener_cache_${timeframe}_${mode}`;
     const cachedData = localStorage.getItem(cacheKey);
+    let hasCache = false;
     if (cachedData && data.length === 0) {
       try {
         setData(JSON.parse(cachedData));
+        hasCache = true;
       } catch (e) {}
     }
 
     setIsLoading(true);
-    try {
-      const screenerData = await fetchPythonScreener(timeframe, mode, 100);
+
+    const runFastScreener = async () => {
+      try {
+        const prices = await fetchAllBinancePrices();
+        const results: ScreenerEntry[] = [];
+        
+        for (const crypto of CRYPTO_DATABASE) {
+          const livePrice = prices.get(crypto.symbol);
+          const p = livePrice?.price || crypto.price || 0;
+          const pc = livePrice?.priceChange24h || crypto.priceChange24h || 0;
+          const vol = livePrice?.volume24h || crypto.volume24h || 0;
+          
+          if (p > 0) {
+            const analysis = generateFullAnalysis(crypto.symbol, timeframe, mode, p, pc, vol);
+            results.push({
+              rank: 0,
+              symbol: crypto.symbol,
+              name: crypto.name,
+              sector: crypto.category,
+              price: p,
+              priceChange24h: pc,
+              quantScore: analysis.quantScore,
+              signal: analysis.signal,
+              volume24h: vol,
+              rsi: analysis.indicators.rsi || 50,
+              priceChangePeriod: pc,
+              volumePeriod: vol,
+              sparklineData: [p, p, p, p, p, p, p]
+            });
+          }
+        }
+        
+        results.sort((a, b) => b.quantScore - a.quantScore);
+        results.forEach((r, i) => { r.rank = i + 1; });
+        
+        setData(results);
+        setLastUpdate(new Date());
+      } catch (e) {
+        console.error("Fast screener error", e);
+      }
+    };
+
+    if (!hasCache) {
+      await runFastScreener();
+    }
+
+    fetchPythonScreener(timeframe, mode, 100).then(screenerData => {
       if (screenerData && Array.isArray(screenerData)) {
         setData(screenerData);
         localStorage.setItem(cacheKey, JSON.stringify(screenerData));
         setLastUpdate(new Date());
       }
-    } catch (e) {
-      console.error(e);
-    } finally {
       setIsLoading(false);
-    }
+    }).catch(e => {
+      console.error(e);
+      setIsLoading(false);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeframe, mode]);
 

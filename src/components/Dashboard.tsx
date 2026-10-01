@@ -129,221 +129,122 @@ export default function Dashboard() {
   const loadAnalysis = useCallback(async () => {
     const cacheKey = `oracle_cache_${symbol}_${timeframe}_${mode}`;
     const cachedData = localStorage.getItem(cacheKey);
+    let hasCache = false;
+    
+    // 1. Mostrar caché de inmediato si existe (Carga instantánea)
     if (cachedData && !data) {
-      try { setData(JSON.parse(cachedData)); } catch(e){}
+      try { 
+        setData(JSON.parse(cachedData)); 
+        hasCache = true;
+      } catch(e){}
     }
     
     setIsSyncing(true);
     const syncStartTime = Date.now();
 
-    // Strategy: Try Python backend first -> fallback to JS engine
+    // Función para carga súper rápida del motor JS local
+    const runFastFallback = async () => {
+      setEngineSource('js');
+      let livePrice: number | undefined;
+      let liveChange: number | undefined;
+      let liveVolume: number | undefined;
 
-    // 1. Try Python backend (real indicators via pandas-ta)
-    try {
+      try {
+        let priceData = await fetchBinancePrice(symbol);
+        if (!priceData && selectedDexPair && selectedDexPair.baseToken.symbol.toUpperCase() === symbol) {
+          priceData = {
+            price: parseFloat(selectedDexPair.priceUsd),
+            priceChange24h: selectedDexPair.priceChange?.h24 || 0,
+            volume24h: selectedDexPair.volume?.h24 || 0,
+            source: 'dexscreener'
+          };
+        }
+        if (priceData) {
+          livePrice = priceData.price;
+          liveChange = priceData.priceChange24h;
+          liveVolume = priceData.volume24h;
+          setDataSource(priceData.source);
+          useAppStore.getState().setPrice(symbol, priceData);
+        } else {
+          setDataSource('mock');
+        }
+      } catch {
+        setDataSource('mock');
+      }
 
-      const pythonResult = await fetchPythonAnalysis(symbol, timeframe, mode);
+      const analysis = generateFullAnalysis(symbol, timeframe, mode, livePrice, liveChange, liveVolume);
+      try {
+        const fgData = await fetchFearGreedIndex();
+        if (fgData) {
+          analysis.sentiment = {
+            ...analysis.sentiment,
+            fearGreedIndex: fgData.value,
+            fearGreedLabel: fgData.classificationES as SentimentData['fearGreedLabel'],
+          };
+        }
+      } catch {}
+      
+      setData(analysis);
+    };
 
+    // 2. Si NO hay caché, cargamos el motor JS de inmediato para que el usuario no espere 50s.
+    if (!hasCache) {
+      await runFastFallback();
+    }
+
+    // 3. Ejecutar el análisis del servidor Python en SEGUNDO PLANO
+    // Esto no bloquea la UI, y cuando responde (aunque tarde), actualiza los datos.
+    fetchPythonAnalysis(symbol, timeframe, mode).then(pythonResult => {
       if (pythonResult && pythonResult.indicators) {
-
         setEngineSource('python');
-
         setDataSource(pythonResult.source === 'python' ? 'binance' : 'mock');
-
-        // Ensure Zustand has the price
-
         useAppStore.getState().setPrice(symbol, {
-
           price: pythonResult.currentPrice,
-
           priceChange24h: pythonResult.priceChange24h,
-
           volume24h: pythonResult.volume24h,
-
           source: 'binance',
-
         });
 
-
-
-        try {
-
-          const supplyRes = await fetch(`${PYTHON_API_URL}/api/supply/${symbol}`);
-
-          if (supplyRes.ok) {
-
-            pythonResult.supplyDynamics = await supplyRes.json();
-
+        Promise.allSettled([
+          fetch(`${PYTHON_API_URL}/api/supply/${symbol}`).then(r => r.ok ? r.json() : null),
+          fetch(`${PYTHON_API_URL}/api/stablecoins/analysis`).then(r => r.ok ? r.json() : null)
+        ]).then(([supplyRes, stablecoinRes]) => {
+          if (supplyRes.status === 'fulfilled' && supplyRes.value) {
+            pythonResult.supplyDynamics = supplyRes.value;
           }
-
-        } catch (e) {}
-
-
-
-        try {
-
-          const stablecoinRes = await fetch(`${PYTHON_API_URL}/api/stablecoins/analysis`);
-
-          if (stablecoinRes.ok) {
-
-            pythonResult.stablecoinAnalysis = await stablecoinRes.json();
-
+          if (stablecoinRes.status === 'fulfilled' && stablecoinRes.value) {
+            pythonResult.stablecoinAnalysis = stablecoinRes.value;
           }
-
-        } catch (e) {}
-
-
-
-        setData(pythonResult as MarketAnalysis);
-        localStorage.setItem(cacheKey, JSON.stringify(pythonResult));
-        setIsSyncing(false);
-        const elapsed = Date.now() - syncStartTime;
-        if (elapsed > 2000) {
-          addToast({ 
-            title: 'Análisis IA Actualizado', 
-            message: `Nuevos datos cuantitativos para ${symbol} disponibles`, 
-            type: 'success', 
-            duration: 4000 
-          });
-        }
-        return;
-
-      }
-
-    } catch {
-      // Python backend unavailable, continue to JS engine
-      addToast({ 
-        title: 'Modo Local Activo', 
-        message: 'Servidor Python no disponible. Usando motor algorítmico de respaldo.', 
-        type: 'warning',
-        duration: 5000
-      });
-
-    }
-
-
-
-    // 2. Fallback: JS engine with REST price data
-
-    setEngineSource('js');
-
-    let livePrice: number | undefined;
-
-    let liveChange: number | undefined;
-
-    let liveVolume: number | undefined;
-
-
-
-    try {
-
-      let priceData = await fetchBinancePrice(symbol);
-
-      
-
-      // If we selected a DEX pair and it's not found in Binance/CoinGecko, use Dex data
-
-      if (!priceData && selectedDexPair && selectedDexPair.baseToken.symbol.toUpperCase() === symbol) {
-
-        priceData = {
-
-          price: parseFloat(selectedDexPair.priceUsd),
-
-          priceChange24h: selectedDexPair.priceChange?.h24 || 0,
-
-          volume24h: selectedDexPair.volume?.h24 || 0,
-
-          source: 'dexscreener'
-
-        };
-
-      }
-
-
-
-      if (priceData) {
-
-        livePrice = priceData.price;
-
-        liveChange = priceData.priceChange24h;
-
-        liveVolume = priceData.volume24h;
-
-        setDataSource(priceData.source);
-
-        useAppStore.getState().setPrice(symbol, priceData);
-
+          
+          setData(pythonResult as MarketAnalysis);
+          localStorage.setItem(cacheKey, JSON.stringify(pythonResult));
+          setIsSyncing(false);
+          
+          const elapsed = Date.now() - syncStartTime;
+          if (elapsed > 2000) {
+            addToast({ 
+              title: 'Análisis IA Actualizado', 
+              message: `Nuevos datos cuantitativos para ${symbol} disponibles`, 
+              type: 'success', 
+              duration: 4000 
+            });
+          }
+        });
       } else {
-
-        setDataSource('mock');
-
+        setIsSyncing(false);
       }
-
-    } catch {
-
-      setDataSource('mock');
-
-    }
-
-
-
-    const analysis = generateFullAnalysis(symbol, timeframe, mode, livePrice, liveChange, liveVolume);
-
-
-
-    // Fetch Fear & Greed
-
-    try {
-
-      const fgData = await fetchFearGreedIndex();
-
-      if (fgData) {
-
-        analysis.sentiment = {
-
-          ...analysis.sentiment,
-
-          fearGreedIndex: fgData.value,
-
-          fearGreedLabel: fgData.classificationES as SentimentData['fearGreedLabel'],
-
-        };
-
+    }).catch(() => {
+      setIsSyncing(false);
+      // Fallback message if it fails
+      if (hasCache) {
+         addToast({ 
+          title: 'Modo Local Activo', 
+          message: 'Servidor Python no disponible. Usando datos guardados / motor algorítmico.', 
+          type: 'warning',
+          duration: 5000
+        });
       }
-
-    } catch {}
-
-
-
-    try {
-
-      const supplyRes = await fetch(`${PYTHON_API_URL}/api/supply/${symbol}`);
-
-      if (supplyRes.ok) {
-
-        analysis.supplyDynamics = await supplyRes.json();
-
-      }
-
-    } catch (e) {}
-
-
-
-    try {
-
-      const stablecoinRes = await fetch(`${PYTHON_API_URL}/api/stablecoins/analysis`);
-
-      if (stablecoinRes.ok) {
-
-        analysis.stablecoinAnalysis = await stablecoinRes.json();
-
-      }
-
-    } catch (e) {}
-
-
-
-    setData(analysis);
-
+    });
   }, [symbol, mode, timeframe, selectedDexPair]);
 
 
