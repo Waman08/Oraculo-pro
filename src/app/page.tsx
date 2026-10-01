@@ -53,9 +53,9 @@ function AppContent() {
               title={t('controls.theme')}
               id="theme-toggle-btn"
             >
-              <div className="theme-toggle__knob">
+              <span className="theme-toggle__knob" style={{ display: "block" }}>
                 {theme === 'dark' ? '🌙' : '☀️'}
-              </div>
+              </span>
             </button>
 
             {/* Language Toggle */}
