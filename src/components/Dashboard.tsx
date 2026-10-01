@@ -499,6 +499,17 @@ export default function Dashboard() {
     metrics: {}
   } as unknown as MarketAnalysis;
 
+  
+  // BYPASS HYDRATION COMPLETELY for the complex dashboard to prevent browser extensions from causing #310
+  if (!mounted) {
+    return (
+      <div className="flex flex-col gap-6 w-full min-h-[80vh] items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-gold"></div>
+        <div className="text-sm text-gray-500 font-semibold mt-4">Inicializando entorno seguro...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 w-full" id="dashboard-export-area" suppressHydrationWarning>
       {isSyncing && (
