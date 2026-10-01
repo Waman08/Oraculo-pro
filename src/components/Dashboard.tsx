@@ -16,19 +16,19 @@ import type { MarketAnalysis, ScoreBreakdown, SentimentData } from '@/types';
 
 import { useAppSettings, useLocale } from './AppContext';
 
-import ScoreGauge from './ScoreGauge';
+const ScoreGauge = dynamic(() => import('./ScoreGauge'), { ssr: false });
 
-import IndicatorGrid from './IndicatorGrid';
+const IndicatorGrid = dynamic(() => import('./IndicatorGrid'), { ssr: false });
 
-import DCAPanel from './DCAPanel';
+const DCAPanel = dynamic(() => import('./DCAPanel'), { ssr: false });
 
-import SentimentPanel from './SentimentPanel';
+const SentimentPanel = dynamic(() => import('./SentimentPanel'), { ssr: false });
 
-import OnChainDashboard from './onchain/OnChainDashboard';
+const OnChainDashboard = dynamic(() => import('./onchain/OnChainDashboard'), { ssr: false });
 
-import CandlestickChart from './CandlestickChart';
+const CandlestickChart = dynamic(() => import('./CandlestickChart'), { ssr: false });
 
-import SmartMoneyPanel from './SmartMoneyPanel';
+const SmartMoneyPanel = dynamic(() => import('./SmartMoneyPanel'), { ssr: false });
 
 import WatchlistPanel from './WatchlistPanel';
 
@@ -38,7 +38,7 @@ import PortfolioTracker from './PortfolioTracker';
 
 import AlertsPanel from './AlertsPanel';
 
-import ActuarialPanel from './ActuarialPanel';
+const ActuarialPanel = dynamic(() => import('./ActuarialPanel'), { ssr: false });
 
 import dynamic from 'next/dynamic';
 
@@ -46,13 +46,13 @@ const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 
 
 
-import BacktestChart from './BacktestChart';
+const BacktestChart = dynamic(() => import('./BacktestChart'), { ssr: false });
 
-import LiquidityPanel from './LiquidityPanel';
+const LiquidityPanel = dynamic(() => import('./LiquidityPanel'), { ssr: false });
 
-import SupplyDynamicsPanel from './SupplyDynamicsPanel';
+const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr: false });
 
-import StablecoinDashboard from './StablecoinDashboard';
+const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
 import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Database, Shield, Wallet } from 'lucide-react';
 
@@ -500,7 +500,7 @@ export default function Dashboard() {
   } as unknown as MarketAnalysis;
 
   return (
-    <div className="flex flex-col gap-6 w-full" id="dashboard-export-area">
+    <div className="flex flex-col gap-6 w-full" id="dashboard-export-area" suppressHydrationWarning>
       {isSyncing && (
         <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-yellow-500/30 backdrop-blur-md animate-pulse">
           <div className="w-2 h-2 rounded-full bg-yellow-500 animate-ping"></div>
@@ -944,7 +944,7 @@ export default function Dashboard() {
 
 
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" suppressHydrationWarning>
 
           <DCAPanel
             actionableData={displayData.actionableData}
