@@ -5,25 +5,28 @@ import { useAppStore, type Toast } from '@/lib/store';
 import { CheckCircle2, AlertTriangle, Info, XCircle, X } from 'lucide-react';
 
 export default function ToastContainer() {
-  const { toasts, removeToast } = useAppStore();
+  const toasts = useAppStore(state => state.toasts);
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
       {toasts.map((toast) => (
-        <ToastItem key={toast.id} toast={toast} onRemove={() => removeToast(toast.id)} />
+        <ToastItem key={toast.id} toast={toast} />
       ))}
     </div>
   );
 }
 
-function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: () => void }) {
+function ToastItem({ toast }: { toast: Toast }) {
+  const removeToast = useAppStore(state => state.removeToast);
+
   useEffect(() => {
-    const duration = toast.duration || 5000;
+    // Si no tiene duración, dura 15 segundos por defecto (a pedido del usuario 10-30s)
+    const duration = toast.duration || 15000;
     const timer = setTimeout(() => {
-      onRemove();
+      removeToast(toast.id);
     }, duration);
     return () => clearTimeout(timer);
-  }, [toast.duration, onRemove]);
+  }, [toast.id, toast.duration, removeToast]);
 
   const icons: Record<Toast['type'], React.ReactNode> = {
     success: <CheckCircle2 size={20} className="text-[#10B981]" />,
@@ -53,7 +56,7 @@ function ToastItem({ toast, onRemove }: { toast: Toast, onRemove: () => void }) 
           <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>{toast.message}</p>
         )}
       </div>
-      <button onClick={onRemove} className="opacity-50 hover:opacity-100 transition-opacity">
+      <button onClick={() => removeToast(toast.id)} className="opacity-50 hover:opacity-100 transition-opacity">
         <X size={16} style={{ color: 'var(--text-muted)' }} />
       </button>
     </div>

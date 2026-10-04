@@ -226,7 +226,7 @@ export default function Dashboard() {
               title: 'Análisis IA Actualizado', 
               message: `Nuevos datos cuantitativos para ${symbol} disponibles`, 
               type: 'success', 
-              duration: 4000 
+              duration: 15000 
             });
           }
         });
@@ -241,7 +241,7 @@ export default function Dashboard() {
           title: 'Modo Local Activo', 
           message: 'Servidor Python no disponible. Usando datos guardados / motor algorítmico.', 
           type: 'warning',
-          duration: 5000
+          duration: 15000
         });
       }
     });
