@@ -22,7 +22,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="es" data-theme="dark">
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -32,6 +32,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className="antialiased min-h-screen relative"
         style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}
       >

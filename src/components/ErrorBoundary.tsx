@@ -2,10 +2,10 @@
 
 import React from 'react';
 
-export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null, errorInfo: any, isHydrationError: boolean}> {
+export class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: Error | null, errorInfo: any, isHydrationError: boolean, recoveryAttempts: number}> {
   constructor(props: any) {
     super(props);
-    this.state = { hasError: false, error: null, errorInfo: null, isHydrationError: false };
+    this.state = { hasError: false, error: null, errorInfo: null, isHydrationError: false, recoveryAttempts: 0 };
   }
 
   static getDerivedStateFromError(error: Error) {
@@ -22,10 +22,24 @@ export class ErrorBoundary extends React.Component<{children: React.ReactNode}, 
 
   componentDidCatch(error: Error, errorInfo: any) {
     if (this.state.isHydrationError) {
-      console.warn("ErrorBoundary caught a hydration mismatch (usually caused by browser extensions). Auto-recovering...");
+      if (this.state.recoveryAttempts >= 2) {
+        console.error("ErrorBoundary: Hydration recovery failed after 2 attempts. Halting to prevent infinite loop.");
+        // Stop recovering, let it show the red box or a safe fallback
+        this.setState({ isHydrationError: false });
+        return;
+      }
+
+      console.warn(`ErrorBoundary caught a hydration mismatch. Auto-recovering (Attempt ${this.state.recoveryAttempts + 1})...`);
+      
       // Auto-recover by forcing a clean client-side re-render
       setTimeout(() => {
-        this.setState({ hasError: false, error: null, errorInfo: null, isHydrationError: false });
+        this.setState(prev => ({ 
+          hasError: false, 
+          error: null, 
+          errorInfo: null, 
+          isHydrationError: false,
+          recoveryAttempts: prev.recoveryAttempts + 1
+        }));
       }, 0);
       return;
     }
@@ -50,7 +64,7 @@ export class ErrorBoundary extends React.Component<{children: React.ReactNode}, 
           </pre>
           <button 
             className="mt-6 px-6 py-2 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-all rounded-lg font-semibold"
-            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null })}
+            onClick={() => this.setState({ hasError: false, error: null, errorInfo: null, recoveryAttempts: 0 })}
           >
             Intentar de nuevo
           </button>
