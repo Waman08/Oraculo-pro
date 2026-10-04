@@ -28,8 +28,8 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  if (!mounted || !actionableData) return null;
-  const { dcaLevels = [], optimalEntry, takeProfit, stopLoss, riskLevel } = actionableData;
+  
+  const { dcaLevels = [], optimalEntry, takeProfit, stopLoss, riskLevel } = actionableData || {};
   const isBuying = dcaLevels.length > 0 && dcaLevels[0].type === 'compra';
 
   const themeColor = isBuying ? 'var(--signal-buy)' : 'var(--signal-sell)';
@@ -84,6 +84,9 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
 
     return { totalTokens, dcaAverage, improvement, tpReturnPercent, tpReturnUsd };
   }, [dcaRows, totalCapital, currentPrice, takeProfit, isBuying]);
+
+  if (!mounted || !actionableData) return null;
+
 
   const handleCopy = (level: any, idx: number) => {
     const text = `Nivel ${level.level}: $${level.capital.toFixed(2)} USD a precio ${level.price}`;

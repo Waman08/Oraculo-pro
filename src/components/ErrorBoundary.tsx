@@ -11,7 +11,7 @@ export class ErrorBoundary extends React.Component<{children: React.ReactNode}, 
   static getDerivedStateFromError(error: Error) {
     const msg = error.message.toLowerCase();
     const isHydration = msg.includes('hydration') || 
-                        msg.includes('minified react error #310') || 
+                         
                         msg.includes('minified react error #418') || 
                         msg.includes('minified react error #423') || 
                         msg.includes('minified react error #425') ||
