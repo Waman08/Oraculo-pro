@@ -3,6 +3,7 @@
 import type { ScoreBreakdown } from '@/types';
 import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
+import InfoTooltip from './ui/InfoTooltip';
 import { TrendingUp, Zap, Brain, Link2 } from 'lucide-react';
 
 interface IndicatorGridProps {
@@ -29,6 +30,32 @@ const CATEGORY_COLORS = {
   sentiment: '#F59E0B',
   onChain: '#10B981',
 };
+
+
+function getTooltipForIndicator(name: string) {
+  const n = name.toLowerCase();
+  if (n.includes('rsi')) {
+    return {
+      title: 'RSI (14)',
+      description: 'Mide la velocidad de los movimientos de precio.',
+      howToUse: 'Menor a 30 = Sobreventa (posible rebote alcista). Mayor a 70 = Sobrecompra (posible caída).'
+    };
+  }
+  if (n.includes('macd')) {
+    return {
+      title: 'MACD',
+      description: 'Indica cambios en el impulso del mercado cuando la línea rápida cruza la señal.'
+    };
+  }
+  if (n.includes('supertrend') || n.includes('ema')) {
+    return {
+      title: 'Tendencia (Supertrend / EMAs)',
+      description: 'Indica la dirección dominante de la tendencia.',
+      howToUse: 'Verde = Alcista, Rojo = Bajista.'
+    };
+  }
+  return null;
+}
 
 export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
   const { t } = useLocale();

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Shield, BarChart2, Activity, TrendingUp, TrendingDown, Minus, Zap } from 'lucide-react';
+import InfoTooltip from './ui/InfoTooltip';
 import { createChart, ColorType, IChartApi } from 'lightweight-charts';
 
 interface ActuarialData {
@@ -277,9 +278,7 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart2 size={15} style={{ color: 'var(--accent-gold)' }} />
-                <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-                  Monte Carlo 7D — Jump-Diffusion
-                </span>
+                <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>Monte Carlo 7D <InfoTooltip title="Simulación Monte Carlo" description="Proyección matemática de 1.000 escenarios futuros posibles para ver el rango de precios más probable a 7 días." /></span>
               </div>
               <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Actual: <strong style={{ color: 'var(--text-primary)' }}>{fmtPrice(currentPrice)}</strong>

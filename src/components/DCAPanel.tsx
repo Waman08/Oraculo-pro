@@ -5,7 +5,10 @@ import type { ActionableData } from '@/types';
 import { useLocale } from './AppContext';
 import { useAppStore } from '@/lib/store';
 import { 
-  ArrowDown, ArrowUp, 
+  ArrowDown, ArrowUp,
+} from 'lucide-react';
+import InfoTooltip from './ui/InfoTooltip';
+import { 
   Calculator, Copy, Check, DollarSign, PieChart, Activity, Zap
 } from 'lucide-react';
 
