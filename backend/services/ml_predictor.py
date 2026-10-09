@@ -1,7 +1,13 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from typing import Dict, Any
+from typing import Dict, Any, Tuple
+import time
+
+
+# Cache structure: { "BTC": (CryptoPredictor_instance, timestamp) }
+_ml_model_cache: Dict[str, Tuple['CryptoPredictor', float]] = {}
+CACHE_TTL = 7200 # 2 hours in seconds
 
 class CryptoPredictor:
     """
@@ -129,13 +135,30 @@ class CryptoPredictor:
             }
         }
 
-def predict_direction(df: pd.DataFrame) -> Dict[str, Any]:
-    """Helper function to train and predict on the fly."""
+def predict_direction(df: pd.DataFrame, symbol: str = "UNKNOWN") -> Dict[str, Any]:
+    """Helper function to train and predict, using a 2-hour cache per symbol."""
     try:
-        # Create a local instance to avoid race conditions in async requests
+        current_time = time.time()
+        
+        # Check cache
+        if symbol in _ml_model_cache:
+            cached_predictor, timestamp = _ml_model_cache[symbol]
+            if current_time - timestamp < CACHE_TTL:
+                # Use cached model, evaluate only on closed candles to avoid jitter
+                # We use df.iloc[:-1] so the prediction doesn't flip on every live tick
+                df_closed = df.iloc[:-1] if len(df) > 1 else df
+                return cached_predictor.predict(df_closed)
+                
+        # Train new model
         local_predictor = CryptoPredictor()
         local_predictor.train(df)
-        return local_predictor.predict(df)
+        
+        # Cache it
+        _ml_model_cache[symbol] = (local_predictor, current_time)
+        
+        # Predict on closed candles
+        df_closed = df.iloc[:-1] if len(df) > 1 else df
+        return local_predictor.predict(df_closed)
     except Exception as e:
         print(f"[ML] Error in prediction: {e}")
         return {"prediction": "neutral", "confidence": 50.0, "probabilities": {"up": 0.5, "down": 0.5}}

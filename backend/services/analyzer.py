@@ -644,7 +644,7 @@ async def run_analysis(
     blended_total = (breakdown_main["total"] * 0.6) + (breakdown_htf["total"] * 0.4)
     
     # ML Prediction and Volume Anomaly
-    ml_prediction = predict_direction(df_main)
+    ml_prediction = predict_direction(df_main, symbol)
     volume_anomaly = detect_volume_anomaly(df_main)
     # AUDIT FIX: sentiment_nlp was 100% fake (random.uniform). Removed.
     nlp_sentiment = {"score": 50, "label": "Neutral", "source": "disabled"}

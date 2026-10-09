@@ -106,7 +106,8 @@ function seededRandom(seed: string): () => number {
 }
 
 function randomInRange(rng: () => number, min: number, max: number): number {
-  return min + rng() * (max - min);
+  // Deterministic fallback: exactly in the middle of the range. No randomness allowed.
+  return min + 0.5 * (max - min);
 }
 
 // ---- Generadores de Datos Simulados ----

@@ -132,10 +132,13 @@ export default function Dashboard() {
     let hasCache = false;
     
     // 1. Mostrar caché de inmediato si existe (Carga instantánea)
-    if (cachedData && !data) {
+    const isInitialLoad = !data;
+    let hasCacheOrData = !isInitialLoad;
+
+    if (isInitialLoad && cachedData) {
       try { 
         setData(JSON.parse(cachedData)); 
-        hasCache = true;
+        hasCacheOrData = true;
       } catch(e){}
     }
     
@@ -188,7 +191,7 @@ export default function Dashboard() {
     };
 
     // 2. Si NO hay caché, cargamos el motor JS de inmediato para que el usuario no espere 50s.
-    if (!hasCache) {
+    if (!hasCacheOrData) {
       await runFastFallback();
     }
 
@@ -236,7 +239,7 @@ export default function Dashboard() {
     }).catch(() => {
       setIsSyncing(false);
       // Fallback message if it fails
-      if (hasCache) {
+      if (hasCacheOrData) {
          addToast({ 
           title: 'Modo Local Activo', 
           message: 'Servidor Python no disponible. Usando datos guardados / motor algorítmico.', 
@@ -257,7 +260,7 @@ export default function Dashboard() {
 
     loadAnalysis();
 
-    const interval = setInterval(loadAnalysis, 30000);
+    const interval = setInterval(loadAnalysis, 300000);
 
     return () => clearInterval(interval);
 
