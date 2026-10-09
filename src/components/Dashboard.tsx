@@ -54,7 +54,7 @@ const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr
 
 const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Database, Shield, Wallet } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Link2, Database, Shield, Wallet } from 'lucide-react';
 
 import { wsManager } from '@/lib/websocket-manager';
 
@@ -513,7 +513,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full" id="dashboard-export-area" suppressHydrationWarning>
+    <div className="flex flex-col gap-6 w-full pb-20 md:pb-6" id="dashboard-export-area" suppressHydrationWarning>
       {isSyncing && (
         <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-yellow-500/30 backdrop-blur-md animate-pulse">
           <div className="w-2 h-2 rounded-full bg-yellow-500 animate-ping"></div>
@@ -833,7 +833,7 @@ export default function Dashboard() {
 
       {/* TAB NAVIGATION */}
 
-      <div className="flex w-full border-b overflow-x-auto gap-4 px-2 mt-4 mb-6" style={{ borderColor: 'var(--bg-tertiary)' }}>
+      <div className="hidden md:flex w-full border-b overflow-x-auto gap-4 px-2 mt-4 mb-6" style={{ borderColor: 'var(--bg-tertiary)' }}>
 
         <button
 

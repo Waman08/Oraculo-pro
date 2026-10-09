@@ -7,6 +7,9 @@ import CommandPalette from '@/components/CommandPalette';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
 };
 
 export const metadata = {
@@ -14,6 +17,15 @@ export const metadata = {
   description: 'Plataforma de análisis cuantitativo con motor de Machine Learning para criptomonedas. Señales de compra/venta, niveles DCA, métricas On-Chain y sentimiento del mercado.',
   keywords: 'trading, criptomonedas, bitcoin, análisis técnico, machine learning, DCA, RSI, MACD',
   authors: [{ name: 'Trading Oracle Pro' }],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Oráculo Pro',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({

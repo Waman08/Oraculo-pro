@@ -1,0 +1,21 @@
+﻿{
+    "icons":  [
+                  {
+                      "type":  "image/png",
+                      "sizes":  "192x192",
+                      "src":  "/icons/icon-192x192.png"
+                  },
+                  {
+                      "type":  "image/png",
+                      "sizes":  "512x512",
+                      "src":  "/icons/icon-512x512.png"
+                  }
+              ],
+    "description":  "Plataforma de Análisis Cuantitativo y Señales Cripto",
+    "background_color":  "#0B0E14",
+    "theme_color":  "#F59E0B",
+    "name":  "Oráculo de Trading Pro",
+    "start_url":  "/",
+    "display":  "standalone",
+    "short_name":  "Oráculo Pro"
+}
