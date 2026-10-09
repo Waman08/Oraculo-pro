@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useLocale, useAppSettings } from './AppContext';
 import { fetchAllBinancePrices } from '@/lib/api';
-import { Wallet, Plus, Trash2, ArrowUpRight, ArrowDownRight, PieChart, Activity, XCircle } from 'lucide-react';
+import { Wallet, Plus, Trash2, ArrowUpRight, ArrowDownRight, PieChart, Activity, XCircle, History } from 'lucide-react';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
 import { useAppStore } from '@/lib/store';
 import { wsManager } from '@/lib/websocket-manager';
@@ -80,7 +80,7 @@ export default function PortfolioTracker() {
   const loadPaperSummary = async () => {
     setPaperLoading(true);
     try {
-      const res = await fetch(`${PYTHON_API_URL}/api/paper/summary?session_id=default_session`);
+      const res = await fetch(`${PYTHON_API_URL}/api/paper/status?session_id=default_session`);
       if (res.ok) {
         const data = await res.json();
         setPaperData(data);
@@ -139,6 +139,56 @@ export default function PortfolioTracker() {
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   
   // Paper Portfolio calculations
+  
+  const renderPaperHistory = () => {
+    if (!paperData || !paperData.closedPositions || paperData.closedPositions.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-8">
+        <h3 className="text-sm font-bold text-gray-300 mb-3 flex items-center gap-2">
+          <History size={16} />
+          Historial de Trades Cerrados
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-white/5 uppercase text-gray-400">
+              <tr>
+                <th className="p-3 rounded-tl-lg">Fecha</th>
+                <th className="p-3">Activo</th>
+                <th className="p-3">Lado</th>
+                <th className="p-3">Entrada</th>
+                <th className="p-3">Salida</th>
+                <th className="p-3">Motivo</th>
+                <th className="p-3 text-right rounded-tr-lg">P&L Neto</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {paperData.closedPositions.slice().reverse().map((pos: any) => {
+                const isWin = pos.pnl_usd >= 0;
+                const d = new Date(pos.closed_at).toLocaleString();
+                return (
+                  <tr key={pos.id} className="hover:bg-white/5 transition-colors">
+                    <td className="p-3 text-gray-500">{d}</td>
+                    <td className="p-3 font-bold">{pos.symbol}</td>
+                    <td className={`p-3 font-bold ${pos.side === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{pos.side}</td>
+                    <td className="p-3 font-mono">${pos.entry_price.toFixed(2)}</td>
+                    <td className="p-3 font-mono">${pos.exit_price?.toFixed(2) || 'N/A'}</td>
+                    <td className="p-3"><span className="bg-white/10 px-2 py-1 rounded text-[10px]">{pos.exit_reason || 'MANUAL'}</span></td>
+                    <td className={`p-3 font-bold text-right ${isWin ? 'text-green-400' : 'text-red-400'}`}>
+                      {isWin ? '+' : ''}{pos.pnl_usd?.toFixed(2)} ({pos.pnl_pct?.toFixed(2)}%)
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const renderPaperPositions = () => {
     if (!paperData || !paperData.openPositions || paperData.openPositions.length === 0) {
       return (
@@ -217,7 +267,7 @@ export default function PortfolioTracker() {
           className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${activeTab === 'paper' ? 'bg-purple-600 text-white' : 'text-gray-400 hover:text-white'}`}
           onClick={() => setActiveTab('paper')}
         >
-          Simulador Paper Trading ($10k)
+          Simulador Demo ($10.000)
         </button>
       </div>
       
@@ -365,6 +415,7 @@ export default function PortfolioTracker() {
                  </p>
                  
                  {renderPaperPositions()}
+                 {renderPaperHistory()}
               </div>
             </>
           )}

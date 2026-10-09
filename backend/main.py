@@ -18,6 +18,7 @@ import telegram_bot
 from telegram_bot import start_bot_loop
 
 from services.analyzer import run_analysis, run_screener_analysis_fast
+from services.paper_trading import execute_paper_trade, evaluate_open_positions, get_paper_metrics
 from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, is_supported, BINANCE_PAIR_MAP, init_binance_symbols, fetch_klines
 from services.indicators import calculate_all_indicators
 from services.backtester import run_backtest
@@ -97,7 +98,7 @@ async def screener_updater_loop():
             # Paper Trading Update
             try:
                 current_prices = {k: v["price"] for k, v in tickers.items()}
-                check_positions_against_ticks(current_prices)
+                evaluate_open_positions(current_prices)
             except Exception as pt_err:
                 print(f"[Paper Trading] Error tracking trades: {pt_err}")
             
@@ -226,7 +227,7 @@ async def screener_updater_loop():
                                                                 if bal > 10:
                                                                     amt = bal * 0.05
                                                                     trade_side = "BUY" if is_strong_buy else "SELL"
-                                                                    execute_trade(sess, sym, trade_side, price, amt, sl, tp)
+                                                                    execute_paper_trade(sess, sym, trade_side, price, amt, sl, tp)
                                                                     print(f"[AutoTrade] Opened {trade_side} on {sym} for {sess} with ${amt:.2f}")
                                                     except Exception as trade_err:
                                                         print(f"[AutoTrade Err] {trade_err}")
@@ -950,7 +951,7 @@ async def create_paper_order(request: Request):
         if not symbol or not side or not price or not size_usd:
             raise HTTPException(status_code=400, detail="Missing required parameters")
             
-        res = execute_trade(session_id, symbol, side, float(price), float(size_usd), sl, tp)
+        res = execute_paper_trade(session_id, symbol, side, float(price), float(size_usd), sl, tp)
         if "error" in res:
             raise HTTPException(status_code=400, detail=res["error"])
             
@@ -958,10 +959,10 @@ async def create_paper_order(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/paper/summary")
-async def get_paper_summary(session_id: str = "default_session"):
+@app.get("/api/paper/status")
+async def get_paper_status(session_id: str = "default_session"):
     try:
-        res = get_account_analytics(session_id)
+        res = get_paper_metrics(session_id)
         if "error" in res:
             raise HTTPException(status_code=400, detail=res["error"])
         return res

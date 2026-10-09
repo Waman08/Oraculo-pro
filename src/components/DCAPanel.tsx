@@ -329,7 +329,7 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
               ) : (
                 <>
                   <Zap size={18} className="text-white" />
-                  <span>⚡ Abrir Paper Trade por ${actionableData?.positionSizing?.recommendedSizeUSD || 100}</span>
+                  <span>⚡ Simular Orden por ${actionableData?.positionSizing?.recommendedSizeUSD || 100}</span>
                 </>
               )}
             </button>

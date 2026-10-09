@@ -25,7 +25,7 @@ def get_or_create_account(session_id: str) -> dict:
     insert_res = supabase.table("paper_accounts").insert(new_acc).execute()
     return insert_res.data[0] if insert_res.data else new_acc
 
-def execute_trade(session_id: str, symbol: str, side: str, price: float, size_usd: float, sl: float = None, tp: float = None) -> dict:
+def execute_paper_trade(session_id: str, symbol: str, side: str, price: float, size_usd: float, sl: float = None, tp: float = None) -> dict:
     if not supabase:
         return {"error": "Supabase not configured"}
     
@@ -116,7 +116,7 @@ def close_position(pos_id: str, exit_price: float, reason: str = "MANUAL"):
         new_cash = float(acc["cash_balance"]) + exit_value - exit_fee
         supabase.table("paper_accounts").update({"cash_balance": new_cash}).eq("id", acc["id"]).execute()
 
-def check_positions_against_ticks(current_prices: dict):
+def evaluate_open_positions(current_prices: dict):
     if not supabase:
         return
         
@@ -145,7 +145,7 @@ def check_positions_against_ticks(current_prices: dict):
             elif sl and current_price >= sl:
                 close_position(pos["id"], sl, "SL")
 
-def get_account_analytics(session_id: str) -> dict:
+def get_paper_metrics(session_id: str) -> dict:
     if not supabase:
         return {"error": "Supabase not configured"}
         
