@@ -54,7 +54,7 @@ const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr
 
 const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Link2, Database, Shield, Wallet } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet } from 'lucide-react';
 
 import { wsManager } from '@/lib/websocket-manager';
 
@@ -87,6 +87,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'terminal' | 'onchain' | 'actuarial' | 'portfolio'>('terminal');
 
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   const [dataSource, setDataSource] = useState<'binance' | 'coingecko' | 'mock' | 'dexscreener'>('mock');
 
