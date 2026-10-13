@@ -43,8 +43,8 @@ const ActuarialPanel = dynamic(() => import('./ActuarialPanel'), { ssr: false })
 import dynamic from 'next/dynamic';
 
 const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
-
-
+const ShareCardModal = dynamic(() => import('./ShareCardModal'), { ssr: false });
+const SyncDeviceModal = dynamic(() => import('./SyncDeviceModal'), { ssr: false });
 
 const BacktestChart = dynamic(() => import('./BacktestChart'), { ssr: false });
 
@@ -54,11 +54,12 @@ const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr
 
 const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode } from 'lucide-react';
 
 import { wsManager } from '@/lib/websocket-manager';
 
 import { useAppStore } from '@/lib/store';
+import { getCurrentSessionId, linkDeviceSession, isValidSessionId } from '@/lib/supabase';
 
 
 
@@ -88,6 +89,7 @@ export default function Dashboard() {
 
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
 
   const [dataSource, setDataSource] = useState<'binance' | 'coingecko' | 'mock' | 'dexscreener'>('mock');
 
@@ -266,6 +268,43 @@ export default function Dashboard() {
     return () => clearInterval(interval);
 
   }, [loadAnalysis]);
+
+  // Detectar ?sync_id=... en la URL para vinculación automática de dispositivo
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const syncId = params.get('sync_id');
+
+      if (syncId) {
+        const currentSession = getCurrentSessionId();
+        if (syncId !== currentSession && isValidSessionId(syncId)) {
+          addToast({
+            title: '📱 Sincronización Automática',
+            message: 'Vinculando dispositivo y cargando tus datos...',
+            type: 'info'
+          });
+
+          // Limpiar la URL primero para evitar bucles
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('sync_id');
+          window.history.replaceState({}, document.title, cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
+
+          setTimeout(() => {
+            linkDeviceSession(syncId, true);
+          }, 350);
+        } else {
+          // Limpiar si ya es la misma sesión
+          const cleanUrl = new URL(window.location.href);
+          cleanUrl.searchParams.delete('sync_id');
+          window.history.replaceState({}, document.title, cleanUrl.pathname + (cleanUrl.search ? cleanUrl.search : ''));
+        }
+      }
+    } catch (err) {
+      console.error('[Dashboard] Error al sincronizar desde URL:', err);
+    }
+  }, [addToast]);
 
 
 
@@ -522,9 +561,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Search Bar */}
+      {/* Search Bar & Sincronizar Móvil */}
 
-      <div className="flex justify-center" data-html2canvas-ignore>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full" data-html2canvas-ignore>
 
         <div className="relative w-full max-w-md">
 
@@ -671,6 +710,22 @@ export default function Dashboard() {
           )}
 
         </div>
+
+        {/* Botón Sincronizar Móvil */}
+        <button
+          onClick={() => setShowSyncModal(true)}
+          className="flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold transition-all border shadow-sm hover:border-[var(--accent-gold)] shrink-0 group cursor-pointer"
+          style={{
+            background: 'var(--bg-secondary)',
+            borderColor: 'var(--border-color)',
+            color: 'var(--text-primary)',
+          }}
+          title="Sincronizar cuenta anónima con teléfono móvil o PC"
+          id="sync-device-btn"
+        >
+          <Smartphone size={16} className="text-[var(--accent-gold)] group-hover:scale-110 transition-transform" />
+          <span>📱 Sincronizar Móvil</span>
+        </button>
 
       </div>
 
@@ -822,9 +877,19 @@ export default function Dashboard() {
 
          <ScoreGauge score={displayData.quantScore} signal={displayData.signal} size={160} />
 
-         <div data-html2canvas-ignore className="ml-4">
+         <div data-html2canvas-ignore className="ml-4 flex flex-col gap-2">
 
            <ExportReport data={displayData} />
+
+           <button 
+             onClick={() => setShowShareModal(true)}
+             className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-bold text-xs uppercase tracking-wider"
+             title="Compartir tarjeta gráfica en redes"
+             id="share-signal-btn"
+           >
+             <Share2 size={13} />
+             📤 Compartir Señal
+           </button>
 
          </div>
 
@@ -1102,7 +1167,64 @@ export default function Dashboard() {
 
       </div>
 
+      {/* MODALS */}
+      <SyncDeviceModal 
+        isOpen={showSyncModal} 
+        onClose={() => setShowSyncModal(false)} 
+      />
 
+      <ShareCardModal 
+        isOpen={showShareModal} 
+        onClose={() => setShowShareModal(false)} 
+        data={displayData} 
+      />
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <div 
+        data-html2canvas-ignore 
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around py-2 px-2 border-t backdrop-blur-xl shadow-2xl"
+        style={{
+          background: 'rgba(15, 23, 42, 0.95)',
+          borderColor: 'rgba(255, 255, 255, 0.1)'
+        }}
+      >
+        <button
+          onClick={() => setActiveTab('terminal')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'terminal' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
+        >
+          <LineChart size={18} />
+          <span className="text-[10px]">Terminal</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('onchain')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'onchain' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
+        >
+          <Database size={18} />
+          <span className="text-[10px]">On-Chain</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('actuarial')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'actuarial' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
+        >
+          <Shield size={18} />
+          <span className="text-[10px]">Riesgo</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('portfolio')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'portfolio' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
+        >
+          <Wallet size={18} />
+          <span className="text-[10px]">Portafolio</span>
+        </button>
+        <button
+          onClick={() => setShowSyncModal(true)}
+          className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-amber-400 hover:text-amber-300"
+          title="Sincronizar Dispositivo"
+        >
+          <Smartphone size={18} />
+          <span className="text-[10px]">Sincronizar</span>
+        </button>
+      </div>
 
     </div>
 

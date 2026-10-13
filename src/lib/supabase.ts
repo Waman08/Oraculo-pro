@@ -118,3 +118,68 @@ export function getSessionId(): string {
   }
   return sessionId;
 }
+
+/**
+ * Devuelve el 'oracle_session_id' actual de localStorage.
+ */
+export function getCurrentSessionId(): string {
+  if (typeof window === 'undefined') return 'server';
+  const existing = localStorage.getItem(SESSION_KEY);
+  if (existing) return existing;
+  return getSessionId();
+}
+
+/**
+ * Valida que el ID tenga un formato seguro y consistente (ej. 'sess_...' o alfanumérico).
+ */
+export function isValidSessionId(targetSessionId: string): boolean {
+  if (!targetSessionId || typeof targetSessionId !== 'string') return false;
+  let cleanId = targetSessionId.trim();
+  if (cleanId.includes('sync_id=')) {
+    const match = cleanId.match(/sync_id=([a-zA-Z0-9_-]+)/);
+    if (match) cleanId = match[1];
+  }
+  return cleanId.length >= 8 && cleanId.length <= 128 && /^[a-zA-Z0-9_-]+$/.test(cleanId);
+}
+
+/**
+ * Valida que el ID tenga formato válido, reemplaza el 'oracle_session_id' en localStorage
+ * y recarga el estado de la aplicación para traer el Portafolio, Watchlist, Alertas y Cuenta de Paper Trading de ese ID.
+ */
+export function linkDeviceSession(targetSessionId: string, reload: boolean = true): boolean {
+  if (typeof window === 'undefined') return false;
+
+  let cleanId = (targetSessionId || '').trim();
+  if (cleanId.includes('sync_id=')) {
+    const match = cleanId.match(/sync_id=([a-zA-Z0-9_-]+)/);
+    if (match) cleanId = match[1];
+  }
+
+  if (!isValidSessionId(cleanId)) {
+    return false;
+  }
+
+  try {
+    localStorage.setItem(SESSION_KEY, cleanId);
+
+    // Limpia el query param sync_id de la URL actual si está presente para evitar bucles
+    if (window.location.search.includes('sync_id')) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('sync_id');
+      window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ''));
+    }
+
+    // Dispara eventos para componentes que escuchen cambios en tiempo real
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new CustomEvent('oracle_session_changed', { detail: { sessionId: cleanId } }));
+
+    if (reload) {
+      window.location.reload();
+    }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] Error al vincular sesión de dispositivo:', err);
+    return false;
+  }
+}
+

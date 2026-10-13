@@ -8,6 +8,7 @@ import {
   ArrowDown, ArrowUp,
 } from 'lucide-react';
 import InfoTooltip from './ui/InfoTooltip';
+import { getSessionId } from '@/lib/supabase';
 import { 
   Calculator, Copy, Check, DollarSign, PieChart, Activity, Zap
 } from 'lucide-react';
@@ -105,7 +106,7 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
     try {
       const sizeUsd = actionableData?.positionSizing?.recommendedSizeUSD || 100;
       const payload = {
-        session_id: 'default_session',
+        session_id: getSessionId(),
         symbol,
         side: isBuying ? 'BUY' : 'SELL',
         price: currentPrice,

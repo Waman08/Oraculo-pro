@@ -7,7 +7,7 @@ import { Wallet, Plus, Trash2, ArrowUpRight, ArrowDownRight, PieChart, Activity,
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
 import { useAppStore } from '@/lib/store';
 import { wsManager } from '@/lib/websocket-manager';
-import { isSupabaseEnabled } from '@/lib/supabase';
+import { isSupabaseEnabled, getSessionId } from '@/lib/supabase';
 import {
   loadPortfolio, addPortfolioItem, removePortfolioItem,
   type PortfolioItemLocal,
@@ -80,7 +80,8 @@ export default function PortfolioTracker() {
   const loadPaperSummary = async () => {
     setPaperLoading(true);
     try {
-      const res = await fetch(`${PYTHON_API_URL}/api/paper/status?session_id=default_session`);
+      const sessionId = getSessionId();
+      const res = await fetch(`${PYTHON_API_URL}/api/paper/status?session_id=${sessionId}`);
       if (res.ok) {
         const data = await res.json();
         setPaperData(data);
