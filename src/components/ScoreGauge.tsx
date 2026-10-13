@@ -53,12 +53,12 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
     const needleX = centerX + needleLength * Math.cos(needleAngle);
     const needleY = centerY + needleLength * Math.sin(needleAngle);
 
-    // Color based on score
+    // Color based on score (0 = Venta Fuerte, 100 = Compra Fuerte)
     let color: string;
-    if (score <= 20) { color = '#10B981'; }
-    else if (score <= 40) { color = '#34D399'; }
-    else if (score <= 60) { color = '#94A3B8'; }
-    else if (score <= 80) { color = '#FB923C'; }
+    if (score >= 75) { color = '#10B981'; }
+    else if (score >= 55) { color = '#34D399'; }
+    else if (score >= 45) { color = '#F59E0B'; }
+    else if (score >= 25) { color = '#FB923C'; }
     else { color = '#EF4444'; }
 
     return { bgPath, scorePath, needleX, needleY, centerX, centerY, color, strokeWidth, scoreAngle };
@@ -80,14 +80,14 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
         viewBox="0 0 280 190"
         className="drop-shadow-lg"
       >
-        {/* Gradient definitions */}
+        {/* Gradient definitions: Red (0%) -> Orange (25%) -> Neutral (50%) -> Green (75%) -> Emerald (100%) */}
         <defs>
           <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#10B981" />
-            <stop offset="25%" stopColor="#34D399" />
+            <stop offset="0%" stopColor="#EF4444" />
+            <stop offset="25%" stopColor="#FB923C" />
             <stop offset="50%" stopColor="#94A3B8" />
-            <stop offset="75%" stopColor="#FB923C" />
-            <stop offset="100%" stopColor="#EF4444" />
+            <stop offset="75%" stopColor="#34D399" />
+            <stop offset="100%" stopColor="#10B981" />
           </linearGradient>
           <filter id="glow">
             <feGaussianBlur stdDeviation="3" result="coloredBlur" />
@@ -128,15 +128,15 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
           strokeWidth={gaugeData.strokeWidth}
           strokeLinecap="round"
           filter="url(#glow)"
-          style={{ transition: 'all 1s ease-out' }}
+          style={{ transition: 'all 0.6s ease-out' }}
         />
 
         {/* Zone labels */}
-        <text x="32" y="138" fill="var(--signal-buy)" fontSize="9" fontWeight="600" textAnchor="middle">0</text>
-        <text x="78" y="48" fill="#34D399" fontSize="8" fontWeight="500" textAnchor="middle">20</text>
+        <text x="32" y="138" fill="var(--signal-sell)" fontSize="9" fontWeight="600" textAnchor="middle">0</text>
+        <text x="78" y="48" fill="#FB923C" fontSize="8" fontWeight="500" textAnchor="middle">25</text>
         <text x="140" y="26" fill="var(--text-muted)" fontSize="8" fontWeight="500" textAnchor="middle">50</text>
-        <text x="202" y="48" fill="#FB923C" fontSize="8" fontWeight="500" textAnchor="middle">80</text>
-        <text x="248" y="138" fill="var(--signal-sell)" fontSize="9" fontWeight="600" textAnchor="middle">100</text>
+        <text x="202" y="48" fill="#34D399" fontSize="8" fontWeight="500" textAnchor="middle">75</text>
+        <text x="248" y="138" fill="var(--signal-buy)" fontSize="9" fontWeight="600" textAnchor="middle">100</text>
 
         {/* Needle */}
         <line

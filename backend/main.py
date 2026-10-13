@@ -434,13 +434,13 @@ async def analyze(
 
 
 @app.get("/api/mtf/{symbol}")
-async def mtf_radar(symbol: str):
+async def mtf_radar(symbol: str, mode: str = Query("Balanceado")):
     """
-    Multi-Timeframe Confluence Radar (15m, 1h, 4h, 1d).
+    Multi-Timeframe Confluence Radar (15m, 1h, 4h, 1d, 1w).
     Returns EMA 20, EMA 50, RSI 14, quick Quant Score and overall fractal alignment.
-    Cached for 3 minutes per symbol.
+    Cached for 3 minutes per symbol and mode.
     """
-    res = await get_mtf_summary(symbol)
+    res = await get_mtf_summary(symbol, mode)
     return res
 
 

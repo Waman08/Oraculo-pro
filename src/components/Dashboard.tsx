@@ -111,7 +111,7 @@ export default function Dashboard() {
     if (!symbol) return;
     setMtfLoading(true);
     try {
-      const res = await fetch(`${PYTHON_API_URL}/api/mtf/${symbol}`);
+      const res = await fetch(`${PYTHON_API_URL}/api/mtf/${symbol}?mode=${mode}`);
       if (res.ok) {
         const json = await res.json();
         setMtfData(json);
@@ -121,13 +121,17 @@ export default function Dashboard() {
     } finally {
       setMtfLoading(false);
     }
-  }, [symbol]);
+  }, [symbol, mode]);
 
   useEffect(() => {
     loadMtf();
     const interval = setInterval(loadMtf, 180000); // 3 minutes cache
     return () => clearInterval(interval);
   }, [loadMtf]);
+
+  // Sincronizacion estricta del active timeframe con Radar MTF
+  const currentTfKey = (timeframe === '1S' ? '1s' : timeframe.toLowerCase()) as '15m' | '1h' | '4h' | '1d' | '1s';
+  const activeMtfItem = mtfData ? ((mtfData as any)[currentTfKey] || (currentTfKey === '1s' ? (mtfData as any)['1w'] : null)) : null;
 
   // Evaluacion de confluencia fractal (al menos 3 de 4)
   const alignmentType = useMemo(() => {
@@ -138,9 +142,9 @@ export default function Dashboard() {
     for (const tf of tfs) {
       const item = mtfData[tf];
       if (item) {
-        if (item.score >= 58 || item.signal === 'Compra' || item.signal === 'Compra Fuerte' || item.trend === 'bullish') {
+        if (item.signal === 'Compra' || item.signal === 'Compra Fuerte' || item.trend === 'bullish') {
           bulls++;
-        } else if (item.score <= 42 || item.signal === 'Venta' || item.signal === 'Venta Fuerte' || item.trend === 'bearish') {
+        } else if (item.signal === 'Venta' || item.signal === 'Venta Fuerte' || item.trend === 'bearish') {
           bears++;
         }
       }
@@ -181,14 +185,14 @@ export default function Dashboard() {
     const cachedData = localStorage.getItem(cacheKey);
     let hasCache = false;
     
-    // 1. Mostrar caché de inmediato si existe (Carga instantánea)
-    const isInitialLoad = !data;
-    let hasCacheOrData = !isInitialLoad;
-
-    if (isInitialLoad && cachedData) {
+    // 1. Mostrar caché de inmediato si coincide exactamente con la selección actual
+    if (cachedData) {
       try { 
-        setData(JSON.parse(cachedData)); 
-        hasCacheOrData = true;
+        const parsed = JSON.parse(cachedData);
+        if (parsed.symbol === symbol && parsed.timeframe === timeframe && parsed.riskMode === mode) {
+          setData(parsed);
+          hasCache = true;
+        }
       } catch(e){}
     }
     
@@ -240,8 +244,8 @@ export default function Dashboard() {
       setData(analysis);
     };
 
-    // 2. Si NO hay caché, cargamos el motor JS de inmediato para que el usuario no espere 50s.
-    if (!hasCacheOrData) {
+    // 2. Si NO hay caché fresco exacto, calculamos de inmediato para respuesta en 0ms
+    if (!hasCache) {
       await runFastFallback();
     }
 
@@ -289,7 +293,7 @@ export default function Dashboard() {
     }).catch(() => {
       setIsSyncing(false);
       // Fallback message if it fails
-      if (hasCacheOrData) {
+      if (hasCache || !!data) {
          addToast({ 
           title: 'Modo Local Activo', 
           message: 'Servidor Python no disponible. Usando datos guardados / motor algorítmico.', 
@@ -569,7 +573,7 @@ export default function Dashboard() {
 
 
 
-    const displayData = data || {
+    const baseDisplayData = data || {
     symbol,
     name: symbol,
     currentPrice: mounted ? (livePriceData?.price || 0) : 0,
@@ -588,6 +592,16 @@ export default function Dashboard() {
     stablecoinAnalysis: null,
     metrics: {}
   } as unknown as MarketAnalysis;
+
+  const displayData = useMemo(() => {
+    const score = activeMtfItem ? activeMtfItem.score : baseDisplayData.quantScore;
+    const signal = (activeMtfItem ? activeMtfItem.signal : baseDisplayData.signal) as any;
+    return {
+      ...baseDisplayData,
+      quantScore: score,
+      signal: signal,
+    };
+  }, [baseDisplayData, activeMtfItem]);
 
   
   // BYPASS HYDRATION COMPLETELY for the complex dashboard to prevent browser extensions from causing #310
@@ -918,66 +932,51 @@ export default function Dashboard() {
 
       </div>
 
-      {/* TIME FRAME SELECTOR & RADAR MTF CONFLUENCE */}
-      <div className="flex flex-col items-center justify-center gap-2.5 my-2 w-full max-w-3xl mx-auto px-2" data-html2canvas-ignore>
-        {/* Selector de Temporalidad */}
-        <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md">
-          <span className="text-[11px] font-semibold text-gray-400 px-2 flex items-center gap-1">
-            <Clock size={12} className="text-[var(--accent-gold)]" /> Temporalidad:
-          </span>
-          {(['15M', '1H', '4H', '1D', '1S'] as const).map((tf) => (
-            <button
-              key={tf}
-              onClick={() => setTimeframe(tf as any)}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
-                timeframe === tf
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-black shadow-md shadow-amber-500/20'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-              id={`dashboard-tf-${tf}`}
-            >
-              {tf}
-            </button>
-          ))}
-        </div>
-
-        {/* Barra Compacta: Radar MTF */}
-        <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md w-full">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 mr-1">
-            <Radar size={14} className="text-[var(--accent-gold)] animate-pulse" />
-            <span className="tracking-wide">Radar MTF:</span>
+      {/* RADAR MTF (MULTI-TEMPORALIDAD) CON CAMBIO DE TIMEFRAME INTEGRADO */}
+      <div className="flex flex-col items-center justify-center my-3 w-full max-w-4xl mx-auto px-2" data-html2canvas-ignore>
+        <div className="flex flex-wrap items-center justify-center gap-2 p-2.5 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md w-full shadow-lg">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 mr-2">
+            <Radar size={15} className="text-[var(--accent-gold)] animate-pulse" />
+            <span className="tracking-wider uppercase text-[11px] text-[var(--accent-gold)]">Radar MTF:</span>
           </div>
 
-          {/* 4 Pildoras MTF */}
+          {/* 5 Pildoras Interactivas: 15M, 1H, 4H, 1D, 1S */}
           {([
             { key: '15m' as const, label: '15M' },
             { key: '1h' as const, label: '1H' },
             { key: '4h' as const, label: '4H' },
             { key: '1d' as const, label: '1D' },
+            { key: '1s' as const, label: '1S' },
           ]).map(({ key, label }) => {
-            const item = mtfData ? mtfData[key] : null;
-            const score = item ? item.score : 50.0;
-            const signal = item ? item.signal : 'Neutral';
-            const isBull = score >= 58 || signal === 'Compra' || signal === 'Compra Fuerte';
-            const isBear = score <= 42 || signal === 'Venta' || signal === 'Venta Fuerte';
+            const item = mtfData ? (mtfData[key] || (key === '1s' ? (mtfData as any)['1w'] : null)) : null;
+            const score = item ? item.score : (timeframe === label ? displayData.quantScore : 50.0);
+            const signal = item ? item.signal : (timeframe === label ? displayData.signal : 'Mantener');
+            const isBull = signal === 'Compra' || signal === 'Compra Fuerte';
+            const isBear = signal === 'Venta' || signal === 'Venta Fuerte';
+            const isActive = timeframe === label;
 
             const pillBg = isBull
               ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25'
               : isBear
               ? 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25'
-              : 'bg-gray-500/15 border-gray-500/30 text-gray-300 hover:bg-gray-500/25';
+              : 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25';
 
             return (
               <button
                 key={key}
                 onClick={() => setTimeframe(label as any)}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold transition-all ${pillBg} ${timeframe === label ? 'ring-2 ring-amber-400/80 shadow-md' : ''}`}
-                title={`Ver temporalidad ${label} (Score: ${score}, Señal: ${signal})`}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${pillBg} ${
+                  isActive
+                    ? 'ring-2 ring-[var(--accent-gold)] shadow-lg shadow-amber-500/20 scale-105'
+                    : 'opacity-85 hover:opacity-100 hover:scale-102'
+                }`}
+                title={`Cambiar gráfico y análisis a ${label} (Score: ${score.toFixed(0)}, Señal: ${signal})`}
+                id={`mtf-pill-${label}`}
               >
-                <span className="font-mono text-[11px] opacity-80">{label}</span>
-                <span className="font-mono font-black text-xs">{score.toFixed(0)}</span>
-                <span className="text-[9px] uppercase font-semibold">
-                  {isBull ? '🟢 Compra' : isBear ? '🔴 Venta' : '⚪ Neutral'}
+                <span className="font-mono text-xs font-black">{label}</span>
+                <span className="font-mono font-black text-xs px-1.5 py-0.5 rounded bg-black/40">{score.toFixed(0)}</span>
+                <span className="text-[10px] uppercase font-semibold">
+                  {isBull ? '🟢 Compra' : isBear ? '🔴 Venta' : '⚪ Mantener'}
                 </span>
               </button>
             );
@@ -985,19 +984,19 @@ export default function Dashboard() {
 
           {/* Badge Destacado: Alineacion Fractal */}
           {alignmentType === 'BULLISH' && (
-            <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black shadow-lg shadow-emerald-500/20 animate-pulse ml-1">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black shadow-lg shadow-emerald-500/20 animate-pulse ml-1">
               <span>🔥 Alineación Fractal Alcista</span>
               <InfoTooltip
                 title="Alineación Fractal Alcista"
-                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia compradora (EMA 20 > EMA 50 y RSI positivo). La alineación fractal aumenta drásticamente la probabilidad de continuación del movimiento."
-                howToUse="Busca entradas a favor del flujo mayor en retrocesos a soportes o EMAs en temporalidades de 15m o 1h."
+                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia compradora (EMA 20 > EMA 50 y RSI positivo). La confluencia fractal aumenta drásticamente la probabilidad de continuación de la tendencia."
+                howToUse="Busca entradas a favor del flujo institucional mayor en retrocesos hacia soportes o EMAs en temporalidades de 15m o 1h."
                 placement="bottom"
               />
             </div>
           )}
 
           {alignmentType === 'BEARISH' && (
-            <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300 text-xs font-black shadow-lg shadow-red-500/20 animate-pulse ml-1">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-xs font-black shadow-lg shadow-red-500/20 animate-pulse ml-1">
               <span>🔥 Alineación Fractal Bajista</span>
               <InfoTooltip
                 title="Alineación Fractal Bajista"

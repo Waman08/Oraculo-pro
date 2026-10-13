@@ -259,10 +259,14 @@ export interface MtfSummaryData {
   '1h': MtfTimeframeData;
   '4h': MtfTimeframeData;
   '1d': MtfTimeframeData;
+  '1s'?: MtfTimeframeData;
+  '1w'?: MtfTimeframeData;
   alignment: 'FULL_BULLISH' | 'FULL_BEARISH' | 'MOSTLY_BULLISH' | 'MOSTLY_BEARISH' | 'MIXED' | string;
   bullishCount?: number;
   bearishCount?: number;
   symbol?: string;
+  mode?: string;
+  [key: string]: any;
 }
 
 export interface MarketAnalysis {

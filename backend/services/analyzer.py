@@ -826,34 +826,38 @@ _mtf_cache: Dict[str, Dict[str, Any]] = {}
 MTF_CACHE_TTL = 180  # 3 minutes in seconds
 
 
-async def get_mtf_summary(symbol: str) -> dict:
+async def get_mtf_summary(symbol: str, mode: str = "Balanceado") -> dict:
     """
     Multi-Timeframe (MTF) Confluence Radar.
-    Queries 15m, 1h, 4h, and 1d klines in parallel (asyncio.gather),
+    Queries 15m, 1h, 4h, 1d, and 1w klines in parallel (asyncio.gather),
     calculates EMA 20, EMA 50, RSI 14, and summary Quant Score for each timeframe.
-    Cached for 3 minutes per symbol to avoid overloading exchange APIs.
+    Uses unified get_signal(score, mode) thresholds matching the main engine.
+    Cached for 3 minutes per symbol and mode.
     """
     import time
     import asyncio
     import pandas_ta as ta
 
     clean_symbol = symbol.upper().strip()
+    clean_mode = mode if mode in THRESHOLDS else "Balanceado"
     now = time.time()
+    cache_key = f"{clean_symbol}:{clean_mode}"
 
     # 1. Check Cache
-    if clean_symbol in _mtf_cache:
-        entry = _mtf_cache[clean_symbol]
+    if cache_key in _mtf_cache:
+        entry = _mtf_cache[cache_key]
         if now - entry["timestamp"] < MTF_CACHE_TTL:
             return entry["data"]
 
-    timeframe_keys = ["15m", "1h", "4h", "1d"]
+    timeframe_keys = ["15m", "1h", "4h", "1d", "1w"]
 
-    # 2. Parallel fetch for all 4 intervals
+    # 2. Parallel fetch for all intervals
     results = await asyncio.gather(
         fetch_klines(clean_symbol, "15m", limit=100),
         fetch_klines(clean_symbol, "1h", limit=100),
         fetch_klines(clean_symbol, "4h", limit=100),
         fetch_klines(clean_symbol, "1d", limit=100),
+        fetch_klines(clean_symbol, "1w", limit=100),
         return_exceptions=True
     )
 
@@ -865,7 +869,7 @@ async def get_mtf_summary(symbol: str) -> dict:
         if isinstance(df, Exception) or df is None or getattr(df, "empty", True) or len(df) < 15:
             summary[tf] = {
                 "score": 50.0,
-                "signal": "Neutral",
+                "signal": "Mantener",
                 "trend": "neutral",
                 "rsi": 50.0,
                 "ema20": 0.0,
@@ -912,17 +916,17 @@ async def get_mtf_summary(symbol: str) -> dict:
             score = round(trend_score * 0.60 + rsi * 0.40, 1)
             score = max(0.0, min(100.0, score))
 
-            # Signal classification
-            if score >= 60.0:
-                signal = "Compra"
+            # Signal classification using the exact same system thresholds
+            signal = get_signal(score, clean_mode)
+            if signal in ["Compra", "Compra Fuerte"]:
                 trend = "bullish"
-                bullish_count += 1
-            elif score <= 40.0:
-                signal = "Venta"
+                if tf in ["15m", "1h", "4h", "1d"]:
+                    bullish_count += 1
+            elif signal in ["Venta", "Venta Fuerte"]:
                 trend = "bearish"
-                bearish_count += 1
+                if tf in ["15m", "1h", "4h", "1d"]:
+                    bearish_count += 1
             else:
-                signal = "Neutral"
                 trend = "neutral"
 
             summary[tf] = {
@@ -936,19 +940,19 @@ async def get_mtf_summary(symbol: str) -> dict:
         except Exception as e:
             summary[tf] = {
                 "score": 50.0,
-                "signal": "Neutral",
+                "signal": "Mantener",
                 "trend": "neutral",
                 "rsi": 50.0,
                 "ema20": 0.0,
                 "ema50": 0.0
             }
 
-    # Alignment evaluation
-    if bullish_count == 4:
-        alignment = "FULL_BULLISH"
-    elif bearish_count == 4:
-        alignment = "FULL_BEARISH"
-    elif bullish_count >= 3:
+    # Alias 1w as 1s (1 Semana) for frontend compatibility
+    if "1w" in summary:
+        summary["1s"] = summary["1w"]
+
+    # Alignment evaluation across timeframes
+    if bullish_count >= 3:
         alignment = "FULL_BULLISH"
     elif bearish_count >= 3:
         alignment = "FULL_BEARISH"
@@ -959,9 +963,10 @@ async def get_mtf_summary(symbol: str) -> dict:
     summary["bullishCount"] = bullish_count
     summary["bearishCount"] = bearish_count
     summary["symbol"] = clean_symbol
+    summary["mode"] = clean_mode
 
     # Save in cache
-    _mtf_cache[clean_symbol] = {
+    _mtf_cache[cache_key] = {
         "timestamp": now,
         "data": summary
     }
