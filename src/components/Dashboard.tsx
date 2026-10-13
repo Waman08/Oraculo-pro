@@ -10,7 +10,7 @@ import { CRYPTO_DATABASE } from '@/lib/mock-data';
 
 import { fetchBinancePrice, fetchFearGreedIndex, fetchPythonAnalysis, fetchBacktestFromServer, BINANCE_PAIR_MAP, getSupportedSymbols, fetchTop100, searchDexScreener, DexScreenerPair } from '@/lib/api';
 
-import type { BacktestResult } from '@/types';
+import type { BacktestResult, MtfSummaryData } from '@/types';
 
 import type { MarketAnalysis, ScoreBreakdown, SentimentData } from '@/types';
 
@@ -45,6 +45,7 @@ import dynamic from 'next/dynamic';
 const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
 const ShareCardModal = dynamic(() => import('./ShareCardModal'), { ssr: false });
 const SyncDeviceModal = dynamic(() => import('./SyncDeviceModal'), { ssr: false });
+import InfoTooltip from './ui/InfoTooltip';
 
 const BacktestChart = dynamic(() => import('./BacktestChart'), { ssr: false });
 
@@ -54,7 +55,7 @@ const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr
 
 const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode, Radar, Clock } from 'lucide-react';
 
 import { wsManager } from '@/lib/websocket-manager';
 
@@ -69,7 +70,7 @@ const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localho
 
 export default function Dashboard() {
 
-  const { symbol, setSymbol, mode, timeframe } = useAppSettings();
+  const { symbol, setSymbol, mode, timeframe, setTimeframe } = useAppSettings();
 
   const { t } = useLocale();
 
@@ -89,7 +90,9 @@ export default function Dashboard() {
 
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showSyncModal, setShowSyncModal] = useState(false);
+    const [showSyncModal, setShowSyncModal] = useState(false);
+  const [mtfData, setMtfData] = useState<MtfSummaryData | null>(null);
+  const [mtfLoading, setMtfLoading] = useState(false);
 
   const [dataSource, setDataSource] = useState<'binance' | 'coingecko' | 'mock' | 'dexscreener'>('mock');
 
@@ -102,6 +105,50 @@ export default function Dashboard() {
   const [backtestData, setBacktestData] = useState<BacktestResult | null>(null);
 
 
+
+    // Multi-Timeframe (MTF) Confluence Radar fetch
+  const loadMtf = useCallback(async () => {
+    if (!symbol) return;
+    setMtfLoading(true);
+    try {
+      const res = await fetch(`${PYTHON_API_URL}/api/mtf/${symbol}`);
+      if (res.ok) {
+        const json = await res.json();
+        setMtfData(json);
+      }
+    } catch (e) {
+      console.warn('[Dashboard] Error fetching MTF radar:', e);
+    } finally {
+      setMtfLoading(false);
+    }
+  }, [symbol]);
+
+  useEffect(() => {
+    loadMtf();
+    const interval = setInterval(loadMtf, 180000); // 3 minutes cache
+    return () => clearInterval(interval);
+  }, [loadMtf]);
+
+  // Evaluacion de confluencia fractal (al menos 3 de 4)
+  const alignmentType = useMemo(() => {
+    if (!mtfData) return null;
+    const tfs: Array<'15m' | '1h' | '4h' | '1d'> = ['15m', '1h', '4h', '1d'];
+    let bulls = 0;
+    let bears = 0;
+    for (const tf of tfs) {
+      const item = mtfData[tf];
+      if (item) {
+        if (item.score >= 58 || item.signal === 'Compra' || item.signal === 'Compra Fuerte' || item.trend === 'bullish') {
+          bulls++;
+        } else if (item.score <= 42 || item.signal === 'Venta' || item.signal === 'Venta Fuerte' || item.trend === 'bearish') {
+          bears++;
+        }
+      }
+    }
+    if (bulls >= 3) return 'BULLISH';
+    if (bears >= 3) return 'BEARISH';
+    return null;
+  }, [mtfData]);
 
   const breakdown = useMemo(() => {
 
@@ -869,6 +916,98 @@ export default function Dashboard() {
 
         </div>
 
+      </div>
+
+      {/* TIME FRAME SELECTOR & RADAR MTF CONFLUENCE */}
+      <div className="flex flex-col items-center justify-center gap-2.5 my-2 w-full max-w-3xl mx-auto px-2" data-html2canvas-ignore>
+        {/* Selector de Temporalidad */}
+        <div className="flex flex-wrap items-center justify-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md">
+          <span className="text-[11px] font-semibold text-gray-400 px-2 flex items-center gap-1">
+            <Clock size={12} className="text-[var(--accent-gold)]" /> Temporalidad:
+          </span>
+          {(['15M', '1H', '4H', '1D', '1S'] as const).map((tf) => (
+            <button
+              key={tf}
+              onClick={() => setTimeframe(tf as any)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                timeframe === tf
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-black shadow-md shadow-amber-500/20'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+              id={`dashboard-tf-${tf}`}
+            >
+              {tf}
+            </button>
+          ))}
+        </div>
+
+        {/* Barra Compacta: Radar MTF */}
+        <div className="flex flex-wrap items-center justify-center gap-2 p-2 rounded-xl bg-black/40 border border-white/10 backdrop-blur-md w-full">
+          <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 mr-1">
+            <Radar size={14} className="text-[var(--accent-gold)] animate-pulse" />
+            <span className="tracking-wide">Radar MTF:</span>
+          </div>
+
+          {/* 4 Pildoras MTF */}
+          {([
+            { key: '15m' as const, label: '15M' },
+            { key: '1h' as const, label: '1H' },
+            { key: '4h' as const, label: '4H' },
+            { key: '1d' as const, label: '1D' },
+          ]).map(({ key, label }) => {
+            const item = mtfData ? mtfData[key] : null;
+            const score = item ? item.score : 50.0;
+            const signal = item ? item.signal : 'Neutral';
+            const isBull = score >= 58 || signal === 'Compra' || signal === 'Compra Fuerte';
+            const isBear = score <= 42 || signal === 'Venta' || signal === 'Venta Fuerte';
+
+            const pillBg = isBull
+              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25'
+              : isBear
+              ? 'bg-red-500/15 border-red-500/40 text-red-400 hover:bg-red-500/25'
+              : 'bg-gray-500/15 border-gray-500/30 text-gray-300 hover:bg-gray-500/25';
+
+            return (
+              <button
+                key={key}
+                onClick={() => setTimeframe(label as any)}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-bold transition-all ${pillBg} ${timeframe === label ? 'ring-2 ring-amber-400/80 shadow-md' : ''}`}
+                title={`Ver temporalidad ${label} (Score: ${score}, Señal: ${signal})`}
+              >
+                <span className="font-mono text-[11px] opacity-80">{label}</span>
+                <span className="font-mono font-black text-xs">{score.toFixed(0)}</span>
+                <span className="text-[9px] uppercase font-semibold">
+                  {isBull ? '🟢 Compra' : isBear ? '🔴 Venta' : '⚪ Neutral'}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* Badge Destacado: Alineacion Fractal */}
+          {alignmentType === 'BULLISH' && (
+            <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black shadow-lg shadow-emerald-500/20 animate-pulse ml-1">
+              <span>🔥 Alineación Fractal Alcista</span>
+              <InfoTooltip
+                title="Alineación Fractal Alcista"
+                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia compradora (EMA 20 > EMA 50 y RSI positivo). La alineación fractal aumenta drásticamente la probabilidad de continuación del movimiento."
+                howToUse="Busca entradas a favor del flujo mayor en retrocesos a soportes o EMAs en temporalidades de 15m o 1h."
+                placement="bottom"
+              />
+            </div>
+          )}
+
+          {alignmentType === 'BEARISH' && (
+            <div className="flex items-center gap-1 px-3 py-1 rounded-lg bg-red-500/20 border border-red-500/50 text-red-300 text-xs font-black shadow-lg shadow-red-500/20 animate-pulse ml-1">
+              <span>🔥 Alineación Fractal Bajista</span>
+              <InfoTooltip
+                title="Alineación Fractal Bajista"
+                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia vendedora bajo sus medias móviles. La presión de oferta domina en múltiples horizontes temporales."
+                howToUse="Evita compras contra tendencia y considera operaciones en corto o toma de beneficios preventivos."
+                placement="bottom"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
 

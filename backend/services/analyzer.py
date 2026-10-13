@@ -821,6 +821,155 @@ async def run_screener_analysis_fast(
     }
 
 
+# ---- Multi-Timeframe (MTF) Radar Cache ----
+_mtf_cache: Dict[str, Dict[str, Any]] = {}
+MTF_CACHE_TTL = 180  # 3 minutes in seconds
+
+
+async def get_mtf_summary(symbol: str) -> dict:
+    """
+    Multi-Timeframe (MTF) Confluence Radar.
+    Queries 15m, 1h, 4h, and 1d klines in parallel (asyncio.gather),
+    calculates EMA 20, EMA 50, RSI 14, and summary Quant Score for each timeframe.
+    Cached for 3 minutes per symbol to avoid overloading exchange APIs.
+    """
+    import time
+    import asyncio
+    import pandas_ta as ta
+
+    clean_symbol = symbol.upper().strip()
+    now = time.time()
+
+    # 1. Check Cache
+    if clean_symbol in _mtf_cache:
+        entry = _mtf_cache[clean_symbol]
+        if now - entry["timestamp"] < MTF_CACHE_TTL:
+            return entry["data"]
+
+    timeframe_keys = ["15m", "1h", "4h", "1d"]
+
+    # 2. Parallel fetch for all 4 intervals
+    results = await asyncio.gather(
+        fetch_klines(clean_symbol, "15m", limit=100),
+        fetch_klines(clean_symbol, "1h", limit=100),
+        fetch_klines(clean_symbol, "4h", limit=100),
+        fetch_klines(clean_symbol, "1d", limit=100),
+        return_exceptions=True
+    )
+
+    summary: Dict[str, Any] = {}
+    bullish_count = 0
+    bearish_count = 0
+
+    for tf, df in zip(timeframe_keys, results):
+        if isinstance(df, Exception) or df is None or getattr(df, "empty", True) or len(df) < 15:
+            summary[tf] = {
+                "score": 50.0,
+                "signal": "Neutral",
+                "trend": "neutral",
+                "rsi": 50.0,
+                "ema20": 0.0,
+                "ema50": 0.0
+            }
+            continue
+
+        try:
+            close = df["close"]
+            price = float(close.iloc[-1])
+
+            # EMA 20 & EMA 50
+            ema20_s = ta.ema(close, length=20)
+            ema50_s = ta.ema(close, length=min(50, len(close) - 1)) if len(close) >= 25 else ema20_s
+
+            ema20 = float(ema20_s.iloc[-1]) if ema20_s is not None and not ema20_s.empty else price
+            ema50 = float(ema50_s.iloc[-1]) if ema50_s is not None and not ema50_s.empty else price
+
+            # RSI 14
+            rsi_s = ta.rsi(close, length=14)
+            rsi = float(rsi_s.iloc[-1]) if rsi_s is not None and not rsi_s.empty and not math.isnan(rsi_s.iloc[-1]) else 50.0
+            rsi = round(max(0.0, min(100.0, rsi)), 1)
+
+            # Trend Score calculation (0 - 100)
+            trend_score = 50.0
+            if price > ema20:
+                trend_score += 15.0
+            else:
+                trend_score -= 15.0
+
+            if price > ema50:
+                trend_score += 15.0
+            else:
+                trend_score -= 15.0
+
+            if ema20 > ema50:
+                trend_score += 20.0
+            else:
+                trend_score -= 20.0
+
+            trend_score = max(0.0, min(100.0, trend_score))
+
+            # Quant Score: 60% Trend Structure + 40% Momentum (RSI)
+            score = round(trend_score * 0.60 + rsi * 0.40, 1)
+            score = max(0.0, min(100.0, score))
+
+            # Signal classification
+            if score >= 60.0:
+                signal = "Compra"
+                trend = "bullish"
+                bullish_count += 1
+            elif score <= 40.0:
+                signal = "Venta"
+                trend = "bearish"
+                bearish_count += 1
+            else:
+                signal = "Neutral"
+                trend = "neutral"
+
+            summary[tf] = {
+                "score": score,
+                "signal": signal,
+                "trend": trend,
+                "rsi": rsi,
+                "ema20": _smart_round(ema20),
+                "ema50": _smart_round(ema50)
+            }
+        except Exception as e:
+            summary[tf] = {
+                "score": 50.0,
+                "signal": "Neutral",
+                "trend": "neutral",
+                "rsi": 50.0,
+                "ema20": 0.0,
+                "ema50": 0.0
+            }
+
+    # Alignment evaluation
+    if bullish_count == 4:
+        alignment = "FULL_BULLISH"
+    elif bearish_count == 4:
+        alignment = "FULL_BEARISH"
+    elif bullish_count >= 3:
+        alignment = "FULL_BULLISH"
+    elif bearish_count >= 3:
+        alignment = "FULL_BEARISH"
+    else:
+        alignment = "MIXED"
+
+    summary["alignment"] = alignment
+    summary["bullishCount"] = bullish_count
+    summary["bearishCount"] = bearish_count
+    summary["symbol"] = clean_symbol
+
+    # Save in cache
+    _mtf_cache[clean_symbol] = {
+        "timestamp": now,
+        "data": summary
+    }
+
+    return summary
+
+
+
 
 
 

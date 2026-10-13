@@ -245,6 +245,26 @@ export interface StablecoinAnalysis {
   topChains: Array<{ chain: string; totalUSD: number }>;
 }
 
+export interface MtfTimeframeData {
+  score: number;
+  signal: string;
+  trend: string;
+  rsi?: number;
+  ema20?: number;
+  ema50?: number;
+}
+
+export interface MtfSummaryData {
+  '15m': MtfTimeframeData;
+  '1h': MtfTimeframeData;
+  '4h': MtfTimeframeData;
+  '1d': MtfTimeframeData;
+  alignment: 'FULL_BULLISH' | 'FULL_BEARISH' | 'MOSTLY_BULLISH' | 'MOSTLY_BEARISH' | 'MIXED' | string;
+  bullishCount?: number;
+  bearishCount?: number;
+  symbol?: string;
+}
+
 export interface MarketAnalysis {
   symbol: string;
   name: string;

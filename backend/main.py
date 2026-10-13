@@ -17,7 +17,7 @@ import pandas as pd
 import telegram_bot
 from telegram_bot import start_bot_loop
 
-from services.analyzer import run_analysis, run_screener_analysis_fast
+from services.analyzer import run_analysis, run_screener_analysis_fast, get_mtf_summary
 from services.paper_trading import execute_paper_trade, evaluate_open_positions, get_paper_metrics
 from services.binance_client import fetch_all_tickers, fetch_ticker, get_name, is_supported, BINANCE_PAIR_MAP, init_binance_symbols, fetch_klines
 from services.indicators import calculate_all_indicators
@@ -431,6 +431,17 @@ async def analyze(
     _cache[cache_key] = {"data": result, "ts": time.time()}
 
     return result
+
+
+@app.get("/api/mtf/{symbol}")
+async def mtf_radar(symbol: str):
+    """
+    Multi-Timeframe Confluence Radar (15m, 1h, 4h, 1d).
+    Returns EMA 20, EMA 50, RSI 14, quick Quant Score and overall fractal alignment.
+    Cached for 3 minutes per symbol.
+    """
+    res = await get_mtf_summary(symbol)
+    return res
 
 
 @app.get("/api/backtest")
