@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpCircle } from 'lucide-react';
+import { useLocale } from '../AppContext';
 
 interface InfoTooltipProps {
   title: string;
@@ -12,6 +13,7 @@ interface InfoTooltipProps {
 }
 
 export default function InfoTooltip({ title, description, howToUse, placement = 'top' }: InfoTooltipProps) {
+  const { t, locale } = useLocale();
   const [isVisible, setIsVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; placeAbove: boolean }>({
@@ -87,6 +89,11 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
     };
   }, [isVisible, updatePosition]);
 
+  const displayTitle = t(title);
+  const displayDescription = t(description);
+  const displayHowToUse = howToUse ? t(howToUse) : undefined;
+  const howToInterpretLabel = t('tooltip.howToUse') || (locale === 'en' ? 'HOW TO INTERPRET' : 'CÓMO INTERPRETARLO');
+
   return (
     <>
       <button
@@ -100,7 +107,7 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
           if (isVisible) handleClose();
           else handleOpen();
         }}
-        aria-label={`Ayuda: ${title}`}
+        aria-label={`${locale === 'en' ? 'Help' : 'Ayuda'}: ${displayTitle}`}
       >
         <HelpCircle size={14} />
       </button>
@@ -119,14 +126,14 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
           }}
           className="w-64 p-3 rounded-xl bg-[#0F172A]/95 border border-white/10 shadow-2xl backdrop-blur-md text-xs text-left animate-fadeIn pointer-events-auto"
         >
-          <h4 className="font-bold text-[var(--accent-gold)] mb-1">{title}</h4>
-          <p className="text-gray-300 leading-relaxed">{description}</p>
-          {howToUse && (
+          <h4 className="font-bold text-[var(--accent-gold)] mb-1">{displayTitle}</h4>
+          <p className="text-gray-300 leading-relaxed">{displayDescription}</p>
+          {displayHowToUse && (
             <div className="mt-2 pt-2 border-t border-white/10">
               <span className="font-semibold text-gray-400 text-[10px] uppercase tracking-wider block mb-1">
-                Cómo interpretarlo
+                {howToInterpretLabel}
               </span>
-              <p className="text-gray-200">{howToUse}</p>
+              <p className="text-gray-200">{displayHowToUse}</p>
             </div>
           )}
         </div>,

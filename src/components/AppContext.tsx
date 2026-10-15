@@ -61,6 +61,9 @@ interface AppSettingsContextType {
   setWatchlist: (w: string[]) => void;
   toggleWatchlist: (s: string) => void;
   cloudSynced: boolean;
+  locale: Locale;
+  toggleLocale: () => void;
+  t: (key: string) => string;
 }
 
 const AppSettingsContext = createContext<AppSettingsContextType>({
@@ -76,6 +79,9 @@ const AppSettingsContext = createContext<AppSettingsContextType>({
   setWatchlist: () => {},
   toggleWatchlist: () => {},
   cloudSynced: false,
+  locale: 'es',
+  toggleLocale: () => {},
+  t: (key: string) => key,
 });
 
 export function useAppSettings() {
@@ -242,6 +248,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           watchlist, setWatchlist,
           toggleWatchlist,
           cloudSynced,
+          locale, toggleLocale, t,
         }}>
           {children}
         </AppSettingsContext.Provider>

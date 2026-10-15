@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Laptop, QrCode, Copy, Check, Link2, RefreshCw, X, AlertCircle, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { getCurrentSessionId, linkDeviceSession, isValidSessionId } from '@/lib/supabase';
+import { useAppSettings } from './AppContext';
 
 interface SyncDeviceModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface SyncDeviceModalProps {
 }
 
 export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProps) {
+  const { t } = useAppSettings();
   const [sessionId, setSessionId] = useState<string>('');
   const [inputCode, setInputCode] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState(false);
@@ -40,7 +42,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
       setCopiedCode(true);
       setTimeout(() => setCopiedCode(false), 2500);
     } catch {
-      setErrorMsg('No se pudo copiar automáticamente. Puedes seleccionar y copiar el texto manualmente.');
+      setErrorMsg(t('shareCard.copyError'));
     }
   };
 
@@ -50,7 +52,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
       setCopiedLink(true);
       setTimeout(() => setCopiedLink(false), 2500);
     } catch {
-      setErrorMsg('No se pudo copiar el enlace.');
+      setErrorMsg(t('shareCard.copyError'));
     }
   };
 
@@ -60,28 +62,28 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
 
     const cleanInput = inputCode.trim();
     if (!cleanInput) {
-      setErrorMsg('Por favor ingresa un código de sesión o el enlace recibido.');
+      setErrorMsg(t('syncModal.errEmpty'));
       return;
     }
 
     if (cleanInput === sessionId || cleanInput === syncLink) {
-      setErrorMsg('Este código ya pertenece a la sesión activa en este dispositivo.');
+      setErrorMsg(t('syncModal.errSame'));
       return;
     }
 
     if (!isValidSessionId(cleanInput)) {
-      setErrorMsg('Formato de código inválido. Debe comenzar con sess_ o ser un enlace de sincronización.');
+      setErrorMsg(t('syncModal.errInvalid'));
       return;
     }
 
     setIsLinking(true);
-    setSuccessMsg('Vinculando sesión y sincronizando datos...');
+    setSuccessMsg(t('syncModal.linkingStatus'));
 
     setTimeout(() => {
       const ok = linkDeviceSession(cleanInput, true);
       if (!ok) {
         setIsLinking(false);
-        setErrorMsg('Error al vincular el dispositivo. Verifica el código e intenta de nuevo.');
+        setErrorMsg(t('syncModal.errFailed'));
         setSuccessMsg(null);
       }
     }, 400);
@@ -97,7 +99,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
-          title="Cerrar modal"
+          title={t('syncModal.close')}
         >
           <X size={20} />
         </button>
@@ -109,10 +111,10 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
           </div>
           <div>
             <h2 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-              Sincronizar Dispositivos <ArrowRightLeft size={16} className="text-[var(--accent-gold)]" />
+              {t('syncModal.title')} <ArrowRightLeft size={16} className="text-[var(--accent-gold)]" />
             </h2>
             <p className="text-xs text-gray-400">
-              Conecta tu PC y Móvil PWA sin necesidad de usuario ni contraseña
+              {t('syncModal.subtitle')}
             </p>
           </div>
         </div>
@@ -121,7 +123,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
         <div className="mt-4 mb-6 p-3 rounded-xl bg-white/5 border border-white/10 flex items-start gap-2.5 text-xs text-gray-300">
           <ShieldCheck size={18} className="text-emerald-400 shrink-0 mt-0.5" />
           <span>
-            Tu sesión anónima almacena de forma segura tu <strong>Portafolio</strong>, <strong>Watchlist</strong>, <strong>Alertas</strong> y cuenta demo de <strong>Paper Trading</strong>. Al sincronizar, ambos dispositivos compartirán los mismos datos en tiempo real.
+            {t('syncModal.banner')}
           </span>
         </div>
 
@@ -129,16 +131,16 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
         <div className="mb-6 p-4 rounded-xl bg-black/40 border border-white/10">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-[var(--accent-gold)] flex items-center gap-1.5">
-              <Laptop size={14} /> Este Dispositivo (Código Actual)
+              <Laptop size={14} /> {t('syncModal.thisDevice')}
             </span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold">
-              Activo
+              {t('syncModal.active')}
             </span>
           </div>
 
           {/* Session ID display */}
           <div className="p-3 rounded-lg bg-black/60 border border-white/10 font-mono text-xs text-gray-300 break-all select-all mb-3 flex items-center justify-between gap-2">
-            <span>{sessionId || 'Cargando...'}</span>
+            <span>{sessionId || t('syncModal.loading')}</span>
           </div>
 
           {/* Action Buttons */}
@@ -148,7 +150,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
               className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-white/10 hover:bg-white/20 text-white border border-white/10"
             >
               {copiedCode ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-              {copiedCode ? '¡Código Copiado!' : 'Copiar Código'}
+              {copiedCode ? t('syncModal.codeCopied') : t('syncModal.copyCode')}
             </button>
 
             <button
@@ -156,7 +158,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
               className="flex-1 min-w-[160px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40"
             >
               {copiedLink ? <Check size={14} className="text-emerald-400" /> : <Link2 size={14} />}
-              {copiedLink ? '¡Enlace Copiado!' : 'Copiar Enlace Directo'}
+              {copiedLink ? t('syncModal.linkCopied') : t('syncModal.copyLink')}
             </button>
           </div>
 
@@ -166,7 +168,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
               {sessionId ? (
                 <img 
                   src={qrCodeUrl} 
-                  alt="QR Sincronización" 
+                  alt={t('syncModal.instantScan')} 
                   className="w-28 h-28 object-contain rounded-lg"
                   loading="lazy"
                 />
@@ -178,10 +180,10 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
             </div>
             <div className="text-xs text-gray-400">
               <p className="font-semibold text-gray-200 mb-1 flex items-center gap-1.5">
-                <QrCode size={13} className="text-[var(--accent-gold)]" /> Escaneo instantáneo desde Móvil
+                <QrCode size={13} className="text-[var(--accent-gold)]" /> {t('syncModal.instantScan')}
               </p>
               <p className="text-[11px] leading-relaxed">
-                Apunta con la cámara de tu smartphone a este código QR para abrir Oráculo Pro directamente en tu móvil y sincronizar tu cuenta sin escribir nada.
+                {t('syncModal.scanDesc')}
               </p>
             </div>
           </div>
@@ -190,10 +192,10 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
         {/* SECTION 2: Import from another device */}
         <div className="p-4 rounded-xl bg-black/40 border border-white/10">
           <span className="text-xs font-bold uppercase tracking-wider text-gray-300 flex items-center gap-1.5 mb-2">
-            <Smartphone size={14} /> Vincular con otro Dispositivo
+            <Smartphone size={14} /> {t('syncModal.linkOther')}
           </span>
           <p className="text-xs text-gray-400 mb-3">
-            Si ya tienes una cuenta en tu teléfono u otra PC, pega aquí su código o el enlace recibido:
+            {t('syncModal.linkOtherDesc')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-2">
@@ -201,7 +203,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
               type="text"
               value={inputCode}
               onChange={(e) => setInputCode(e.target.value)}
-              placeholder="Ej: sess_a1b2c3d4... o pega el enlace completo"
+              placeholder={t('syncModal.placeholder')}
               className="flex-1 px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-xs text-white placeholder-gray-500 outline-none focus:border-amber-500 transition-colors font-mono"
             />
             <button
@@ -210,7 +212,7 @@ export default function SyncDeviceModal({ isOpen, onClose }: SyncDeviceModalProp
               className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-400 hover:to-yellow-500 text-black disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/10 shrink-0"
             >
               <RefreshCw size={14} className={isLinking ? 'animate-spin' : ''} />
-              {isLinking ? 'Vinculando...' : 'Vincular Dispositivo'}
+              {isLinking ? t('syncModal.linking') : t('syncModal.linkBtn')}
             </button>
           </div>
 

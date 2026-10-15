@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { Copy, Download, Share2, X, Send } from 'lucide-react';
+import { useAppSettings } from './AppContext';
 
 interface ShareCardModalProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface ShareCardModalProps {
 }
 
 export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModalProps) {
+  const { t, locale } = useAppSettings();
   const cardRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -16,7 +18,10 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
 
   const isBuy = data.quantScore >= 50;
   const themeColor = isBuy ? '#22c55e' : '#ef4444';
-  const signalText = isBuy ? (data.quantScore >= 75 ? 'COMPRA FUERTE' : 'COMPRA') : (data.quantScore <= 25 ? 'VENTA FUERTE' : 'VENTA');
+  const rawSignal = isBuy
+    ? (data.quantScore >= 75 ? 'Compra Fuerte' : 'Compra')
+    : (data.quantScore <= 25 ? 'Venta Fuerte' : 'Venta');
+  const signalText = t(rawSignal).toUpperCase();
 
   const handleDownload = async () => {
     if (!cardRef.current) return;
@@ -55,19 +60,21 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
           await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': blob })
           ]);
-          alert('¡Imagen copiada al portapapeles!');
+          alert(t('shareCard.copied'));
         }
       });
     } catch (err) {
       console.error('Failed to copy image', err);
-      alert('Error al copiar imagen');
+      alert(t('shareCard.copyError'));
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleTelegramShare = () => {
-    const text = `📊 Oráculo Pro: ${data.symbol}\nPrecio: $${data.currentPrice}\nSeñal: ${signalText} (Score: ${data.quantScore})\n\nOráculo Quant AI 🧠`;
+    const priceLabel = locale === 'en' ? 'Price' : 'Precio';
+    const signalLabel = locale === 'en' ? 'Signal' : 'Señal';
+    const text = `📊 ${t('shareCard.telegramText')}: ${data.symbol}\n${priceLabel}: $${data.currentPrice}\n${signalLabel}: ${signalText} (Score: ${data.quantScore})\n\nOráculo Quant AI 🧠`;
     const url = `https://t.me/share/url?url=${encodeURIComponent('https://oraculo-pro.vercel.app')}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -77,7 +84,9 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
       <div className="bg-[#0F172A] border border-white/10 rounded-2xl w-full max-w-4xl max-h-[95vh] overflow-y-auto flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex justify-between items-center p-4 border-b border-white/10">
-          <h2 className="text-lg font-bold flex items-center gap-2"><Share2 size={18} className="text-[var(--accent-gold)]"/> Generador de Share Card</h2>
+          <h2 className="text-lg font-bold flex items-center gap-2">
+            <Share2 size={18} className="text-[var(--accent-gold)]"/> {t('shareCard.title')}
+          </h2>
           <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
         </div>
 
@@ -101,7 +110,7 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
             <div className="flex justify-between items-start z-10">
               <div>
                 <div className="text-[var(--accent-gold)] font-black tracking-widest text-sm md:text-base mb-1">ORÁCULO PRO</div>
-                <div className="text-gray-400 font-medium text-xs md:text-sm tracking-widest">ANÁLISIS CUANTITATIVO</div>
+                <div className="text-gray-400 font-medium text-xs md:text-sm tracking-widest uppercase">{t('shareCard.subtitle')}</div>
               </div>
               <div className="text-right">
                 <div className="text-white font-black text-2xl md:text-4xl">{data.symbol}</div>
@@ -130,26 +139,26 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
             {/* Footer Metrics */}
             <div className="grid grid-cols-2 gap-4 z-10 w-full mt-auto bg-black/40 backdrop-blur-md border border-white/10 rounded-xl p-4">
               <div>
-                <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Confluencias 🔥</div>
+                <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">{t('shareCard.confluences')}</div>
                 <div className="text-white text-sm font-medium space-y-1">
                   <div>RSI (14): <span className="font-mono text-[var(--accent-gold)]">{(data.indicators?.rsi || 0).toFixed(1)}</span></div>
-                  <div>Volumen: <span className="font-mono text-[var(--accent-gold)]">{data.actionableData?.volatilityLevel || 'Normal'}</span></div>
-                  <div>Tendencia: <span className="font-mono" style={{ color: themeColor }}>{data.indicators?.supertrend?.trend || 'Neutral'}</span></div>
+                  <div>{t('shareCard.volume')}: <span className="font-mono text-[var(--accent-gold)]">{data.actionableData?.volatilityLevel || 'Normal'}</span></div>
+                  <div>{t('shareCard.trend')}: <span className="font-mono" style={{ color: themeColor }}>{data.indicators?.supertrend?.trend || 'Neutral'}</span></div>
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Setup Operativo 🎯</div>
+                <div className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">{t('shareCard.tradeSetup')}</div>
                 <div className="text-white text-sm font-medium space-y-1 flex flex-col items-end">
                   <div className="flex gap-4">
-                    <span className="text-gray-400">Entry:</span>
+                    <span className="text-gray-400">{t('shareCard.entry')}:</span>
                     <span className="font-mono">${(data.actionableData?.optimalEntry || data.currentPrice || 0).toLocaleString(undefined, {maximumFractionDigits: 6})}</span>
                   </div>
                   <div className="flex gap-4">
-                    <span className="text-green-400">Target:</span>
+                    <span className="text-green-400">{t('shareCard.target')}:</span>
                     <span className="font-mono">${(data.actionableData?.takeProfit || 0).toLocaleString(undefined, {maximumFractionDigits: 6})}</span>
                   </div>
                   <div className="flex gap-4">
-                    <span className="text-red-400">Stop:</span>
+                    <span className="text-red-400">{t('shareCard.stop')}:</span>
                     <span className="font-mono">${(data.actionableData?.stopLoss || 0).toLocaleString(undefined, {maximumFractionDigits: 6})}</span>
                   </div>
                 </div>
@@ -158,7 +167,7 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
 
             {/* Watermark */}
             <div className="absolute bottom-4 left-12 md:left-14 text-gray-500 text-[10px] font-medium tracking-widest uppercase opacity-60 z-10">
-              oraculo-pro.vercel.app • Análisis no financiero
+              {t('shareCard.disclaimer')}
             </div>
           </div>
         </div>
@@ -171,7 +180,7 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
             className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all disabled:opacity-50"
           >
             <Copy size={18} />
-            📋 Copiar Imagen
+            📋 {t('shareCard.copyImage')}
           </button>
           
           <button 
@@ -180,7 +189,7 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all disabled:opacity-50"
           >
             <Download size={18} />
-            ⬇️ Descargar PNG
+            ⬇️ {t('shareCard.downloadPng')}
           </button>
           
           <button 
@@ -188,7 +197,7 @@ export default function ShareCardModal({ isOpen, onClose, data }: ShareCardModal
             className="flex items-center gap-2 px-6 py-3 bg-[#2AABEE] hover:bg-[#229ED9] text-white rounded-xl font-bold transition-all"
           >
             <Send size={18} />
-            📱 Compartir Telegram
+            📱 {t('shareCard.shareTelegram')}
           </button>
         </div>
       </div>

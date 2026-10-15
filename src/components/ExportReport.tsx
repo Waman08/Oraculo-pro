@@ -4,12 +4,11 @@ import { useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { FileImage, FileText } from 'lucide-react';
-import { useLocale, useAppSettings } from './AppContext';
+import { useAppSettings } from './AppContext';
 import { exportInstitutionalPDF } from '@/lib/pdfReportGenerator';
 
 export default function ExportReport({ data }: { data: any | null }) {
-  const { t } = useLocale();
-  const { symbol } = useAppSettings();
+  const { t, symbol } = useAppSettings();
   const [isExporting, setIsExporting] = useState(false);
 
   const handleExport = async (format: 'pdf' | 'png') => {

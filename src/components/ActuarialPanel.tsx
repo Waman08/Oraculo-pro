@@ -240,8 +240,13 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
         >
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
                 Value at Risk (VaR 95%)
+                <InfoTooltip
+                  title="tooltip.var95.title"
+                  description="tooltip.var95.desc"
+                  howToUse="tooltip.var95.how"
+                />
               </span>
               <Shield size={15} style={{ color: varColor }} />
             </div>
@@ -278,7 +283,14 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart2 size={15} style={{ color: 'var(--accent-gold)' }} />
-                <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>Monte Carlo 7D <InfoTooltip title="Simulación Monte Carlo" description="Proyección matemática de 1.000 escenarios futuros posibles para ver el rango de precios más probable a 7 días." /></span>
+                <span className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+                  Monte Carlo 7D 
+                  <InfoTooltip
+                    title="tooltip.monteCarlo.title"
+                    description="tooltip.monteCarlo.desc"
+                    howToUse="tooltip.monteCarlo.how"
+                  />
+                </span>
               </div>
               <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>
                 Actual: <strong style={{ color: 'var(--text-primary)' }}>{fmtPrice(currentPrice)}</strong>

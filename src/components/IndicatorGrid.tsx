@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useState, useEffect } from 'react';
 import type { ScoreBreakdown } from '@/types';
-import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
 import InfoTooltip from './ui/InfoTooltip';
 import { TrendingUp, Zap, Brain, Link2 } from 'lucide-react';
@@ -31,27 +31,27 @@ const CATEGORY_COLORS = {
   onChain: '#10B981',
 };
 
-
 function getTooltipForIndicator(name: string) {
   const n = name.toLowerCase();
   if (n.includes('rsi')) {
     return {
-      title: 'RSI (14)',
-      description: 'Mide la velocidad de los movimientos de precio.',
-      howToUse: 'Menor a 30 = Sobreventa (posible rebote alcista). Mayor a 70 = Sobrecompra (posible caída).'
+      title: 'tooltip.rsi.title',
+      description: 'tooltip.rsi.desc',
+      howToUse: 'tooltip.rsi.how',
     };
   }
   if (n.includes('macd')) {
     return {
-      title: 'MACD',
-      description: 'Indica cambios en el impulso del mercado cuando la línea rápida cruza la señal.'
+      title: 'tooltip.macd.title',
+      description: 'tooltip.macd.desc',
+      howToUse: 'tooltip.macd.how',
     };
   }
   if (n.includes('supertrend') || n.includes('ema')) {
     return {
-      title: 'Tendencia (Supertrend / EMAs)',
-      description: 'Indica la dirección dominante de la tendencia.',
-      howToUse: 'Verde = Alcista, Rojo = Bajista.'
+      title: 'tooltip.supertrend.title',
+      description: 'tooltip.supertrend.desc',
+      howToUse: 'tooltip.supertrend.how',
     };
   }
   return null;
@@ -63,8 +63,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  if (!mounted) return null;
-  if (!breakdown) return null;
+  if (!mounted || !breakdown) return null;
 
   const categories = [
     { key: 'momentum' as const, data: breakdown.momentum },
@@ -125,45 +124,55 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
 
               {/* Individual indicators */}
               <div className="space-y-2">
-                {data.details?.map((ind, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2 h-2 rounded-full"
-                        style={{
-                          background: ind.signal === 'bullish'
-                            ? 'var(--signal-buy)'
-                            : ind.signal === 'bearish'
-                            ? 'var(--signal-sell)'
-                            : 'var(--signal-neutral)',
-                        }}
-                      />
-                      <span style={{ color: 'var(--text-secondary)' }}>{ind.name}</span>
+                {data.details?.map((ind, idx) => {
+                  const tip = getTooltipForIndicator(ind.name);
+                  return (
+                    <div key={idx} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{
+                            background: ind.signal === 'bullish'
+                              ? 'var(--signal-buy)'
+                              : ind.signal === 'bearish'
+                              ? 'var(--signal-sell)'
+                              : 'var(--signal-neutral)',
+                          }}
+                        />
+                        <span style={{ color: 'var(--text-secondary)' }}>{ind.name}</span>
+                        {tip && (
+                          <InfoTooltip
+                            title={tip.title}
+                            description={tip.description}
+                            howToUse={tip.howToUse}
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                          {typeof ind.value === 'number' && !isNaN(ind.value) ? ind.value.toFixed(2) : ind.value}
+                        </span>
+                        <span
+                          className="font-bold text-xs px-2 py-0.5 rounded"
+                          style={{
+                            color: ind.signal === 'bullish'
+                              ? 'var(--signal-buy)'
+                              : ind.signal === 'bearish'
+                              ? 'var(--signal-sell)'
+                              : 'var(--signal-neutral)',
+                            background: ind.signal === 'bullish'
+                              ? 'var(--signal-buy-dim)'
+                              : ind.signal === 'bearish'
+                              ? 'var(--signal-sell-dim)'
+                              : 'rgba(148,163,184,0.1)',
+                          }}
+                        >
+                          {ind.signal === 'bullish' ? '▲' : ind.signal === 'bearish' ? '▼' : '●'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                        {typeof ind.value === 'number' && !isNaN(ind.value) ? ind.value.toFixed(2) : ind.value}
-                      </span>
-                      <span
-                        className="font-bold text-xs px-2 py-0.5 rounded"
-                        style={{
-                          color: ind.signal === 'bullish'
-                            ? 'var(--signal-buy)'
-                            : ind.signal === 'bearish'
-                            ? 'var(--signal-sell)'
-                            : 'var(--signal-neutral)',
-                          background: ind.signal === 'bullish'
-                            ? 'var(--signal-buy-dim)'
-                            : ind.signal === 'bearish'
-                            ? 'var(--signal-sell-dim)'
-                            : 'rgba(148,163,184,0.1)',
-                        }}
-                      >
-                        {ind.signal === 'bullish' ? '▲' : ind.signal === 'bearish' ? '▼' : '●'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -178,4 +187,3 @@ function getScoreColor(score: number): string {
   if (score >= 70) return 'var(--signal-sell)';
   return 'var(--text-secondary)';
 }
-

@@ -70,9 +70,7 @@ const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localho
 
 export default function Dashboard() {
 
-  const { symbol, setSymbol, mode, timeframe, setTimeframe } = useAppSettings();
-
-  const { t } = useLocale();
+  const { symbol, setSymbol, mode, timeframe, setTimeframe, locale, t } = useAppSettings();
 
   const livePriceData = useAppStore(state => state.livePrices[symbol]);
   const addToast = useAppStore(state => state.addToast);
@@ -280,8 +278,8 @@ export default function Dashboard() {
           const elapsed = Date.now() - syncStartTime;
           if (elapsed > 2000) {
             addToast({ 
-              title: 'Análisis IA Actualizado', 
-              message: `Nuevos datos cuantitativos para ${symbol} disponibles`, 
+              title: t('toast.aiUpdated'), 
+              message: `${t('toast.aiUpdatedDesc')} ${symbol}`, 
               type: 'success', 
               duration: 15000 
             });
@@ -295,8 +293,8 @@ export default function Dashboard() {
       // Fallback message if it fails
       if (hasCache || !!data) {
          addToast({ 
-          title: 'Modo Local Activo', 
-          message: 'Servidor Python no disponible. Usando datos guardados / motor algorítmico.', 
+          title: t('toast.localMode'), 
+          message: t('toast.localModeDesc'), 
           type: 'warning',
           duration: 15000
         });
@@ -332,8 +330,8 @@ export default function Dashboard() {
         const currentSession = getCurrentSessionId();
         if (syncId !== currentSession && isValidSessionId(syncId)) {
           addToast({
-            title: '📱 Sincronización Automática',
-            message: 'Vinculando dispositivo y cargando tus datos...',
+            title: `📱 ${t('toast.deviceSynced')}`,
+            message: t('toast.deviceSyncedDesc'),
             type: 'info'
           });
 
@@ -618,7 +616,7 @@ export default function Dashboard() {
       {isSyncing && (
         <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-yellow-500/30 backdrop-blur-md animate-pulse">
           <div className="w-2 h-2 rounded-full bg-yellow-500 animate-ping"></div>
-          <span className="text-xs font-semibold text-yellow-400">Sincronizando motor cuantitativo...</span>
+          <span className="text-xs font-semibold text-yellow-400">{t('syncingEngine')}</span>
         </div>
       )}
 
@@ -781,11 +779,11 @@ export default function Dashboard() {
             borderColor: 'var(--border-color)',
             color: 'var(--text-primary)',
           }}
-          title="Sincronizar cuenta anónima con teléfono móvil o PC"
+          title={t('syncMobileTooltip')}
           id="sync-device-btn"
         >
           <Smartphone size={16} className="text-[var(--accent-gold)] group-hover:scale-110 transition-transform" />
-          <span>📱 Sincronizar Móvil</span>
+          <span>📱 {t('syncMobile')}</span>
         </button>
 
       </div>
@@ -937,7 +935,7 @@ export default function Dashboard() {
         <div className="flex flex-wrap items-center justify-center gap-2 p-2.5 rounded-2xl bg-black/40 border border-white/10 backdrop-blur-md w-full shadow-lg">
           <div className="flex items-center gap-1.5 text-xs font-bold text-gray-300 mr-2">
             <Radar size={15} className="text-[var(--accent-gold)] animate-pulse" />
-            <span className="tracking-wider uppercase text-[11px] text-[var(--accent-gold)]">Radar MTF:</span>
+            <span className="tracking-wider uppercase text-[11px] text-[var(--accent-gold)]">{t('mtfRadar')}:</span>
           </div>
 
           {/* 5 Pildoras Interactivas: 15M, 1H, 4H, 1D, 1S */}
@@ -951,8 +949,8 @@ export default function Dashboard() {
             const item = mtfData ? (mtfData[key] || (key === '1s' ? (mtfData as any)['1w'] : null)) : null;
             const score = item ? item.score : (timeframe === label ? displayData.quantScore : 50.0);
             const signal = item ? item.signal : (timeframe === label ? displayData.signal : 'Mantener');
-            const isBull = signal === 'Compra' || signal === 'Compra Fuerte';
-            const isBear = signal === 'Venta' || signal === 'Venta Fuerte';
+            const isBull = signal === 'Compra' || signal === 'Compra Fuerte' || signal === 'Buy' || signal === 'Strong Buy';
+            const isBear = signal === 'Venta' || signal === 'Venta Fuerte' || signal === 'Sell' || signal === 'Strong Sell';
             const isActive = timeframe === label;
 
             const pillBg = isBull
@@ -970,13 +968,13 @@ export default function Dashboard() {
                     ? 'ring-2 ring-[var(--accent-gold)] shadow-lg shadow-amber-500/20 scale-105'
                     : 'opacity-85 hover:opacity-100 hover:scale-102'
                 }`}
-                title={`Cambiar gráfico y análisis a ${label} (Score: ${score.toFixed(0)}, Señal: ${signal})`}
+                title={`${t('mtfPillTooltip')} ${label} (Score: ${score.toFixed(0)}, ${locale === 'en' ? 'Signal' : 'Señal'}: ${t(signal)})`}
                 id={`mtf-pill-${label}`}
               >
                 <span className="font-mono text-xs font-black">{label}</span>
                 <span className="font-mono font-black text-xs px-1.5 py-0.5 rounded bg-black/40">{score.toFixed(0)}</span>
                 <span className="text-[10px] uppercase font-semibold">
-                  {isBull ? '🟢 Compra' : isBear ? '🔴 Venta' : '⚪ Mantener'}
+                  {isBull ? `🟢 ${t('Compra')}` : isBear ? `🔴 ${t('Venta')}` : `⚪ ${t('Mantener')}`}
                 </span>
               </button>
             );
@@ -985,11 +983,11 @@ export default function Dashboard() {
           {/* Badge Destacado: Alineacion Fractal */}
           {alignmentType === 'BULLISH' && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-300 text-xs font-black shadow-lg shadow-emerald-500/20 animate-pulse ml-1">
-              <span>🔥 Alineación Fractal Alcista</span>
+              <span>🔥 {t('bullishAlignment')}</span>
               <InfoTooltip
-                title="Alineación Fractal Alcista"
-                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia compradora (EMA 20 > EMA 50 y RSI positivo). La confluencia fractal aumenta drásticamente la probabilidad de continuación de la tendencia."
-                howToUse="Busca entradas a favor del flujo institucional mayor en retrocesos hacia soportes o EMAs en temporalidades de 15m o 1h."
+                title="tooltip.mtfBullish.title"
+                description="tooltip.mtfBullish.desc"
+                howToUse="tooltip.mtfBullish.how"
                 placement="bottom"
               />
             </div>
@@ -997,11 +995,11 @@ export default function Dashboard() {
 
           {alignmentType === 'BEARISH' && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 text-xs font-black shadow-lg shadow-red-500/20 animate-pulse ml-1">
-              <span>🔥 Alineación Fractal Bajista</span>
+              <span>🔥 {t('bearishAlignment')}</span>
               <InfoTooltip
-                title="Alineación Fractal Bajista"
-                description="Al menos 3 de las 4 temporalidades (15m, 1h, 4h, 1d) están en confluencia vendedora bajo sus medias móviles. La presión de oferta domina en múltiples horizontes temporales."
-                howToUse="Evita compras contra tendencia y considera operaciones en corto o toma de beneficios preventivos."
+                title="tooltip.mtfBearish.title"
+                description="tooltip.mtfBearish.desc"
+                howToUse="tooltip.mtfBearish.how"
                 placement="bottom"
               />
             </div>
@@ -1022,11 +1020,11 @@ export default function Dashboard() {
            <button 
              onClick={() => setShowShareModal(true)}
              className="flex items-center justify-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl shadow-lg transition-all font-bold text-xs uppercase tracking-wider"
-             title="Compartir tarjeta gráfica en redes"
+             title={t('shareSignalTooltip')}
              id="share-signal-btn"
            >
              <Share2 size={13} />
-             📤 Compartir Señal
+             📤 {t('shareSignal')}
            </button>
 
          </div>
@@ -1047,7 +1045,7 @@ export default function Dashboard() {
 
         >
 
-          <LineChart size={16} /> <span className="text-sm font-semibold">Terminal</span>
+          <LineChart size={16} /> <span className="text-sm font-semibold">{t('tabTerminal')}</span>
 
         </button>
 
@@ -1059,7 +1057,7 @@ export default function Dashboard() {
 
         >
 
-          <Database size={16} /> <span className="text-sm font-semibold">On-Chain & Oferta</span>
+          <Database size={16} /> <span className="text-sm font-semibold">{t('tabOnChain')}</span>
 
         </button>
 
@@ -1071,7 +1069,7 @@ export default function Dashboard() {
 
         >
 
-          <Shield size={16} /> <span className="text-sm font-semibold">Riesgo Actuarial</span>
+          <Shield size={16} /> <span className="text-sm font-semibold">{t('tabActuarial')}</span>
 
         </button>
 
@@ -1083,7 +1081,7 @@ export default function Dashboard() {
 
         >
 
-          <Wallet size={16} /> <span className="text-sm font-semibold">Portafolio & Alertas</span>
+          <Wallet size={16} /> <span className="text-sm font-semibold">{t('tabPortfolio')}</span>
 
         </button>
 
@@ -1197,7 +1195,7 @@ export default function Dashboard() {
 
           <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
 
-            Inteligencia On-Chain
+            {t('onchain.intelligence')}
 
           </h2>
 
@@ -1239,7 +1237,12 @@ export default function Dashboard() {
 
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--accent-gold)' }}>
 
-              <Shield size={20} /> Position Sizing (Grado Institucional)
+              <Shield size={20} /> {t('actuarial.positionSizing')}
+              <InfoTooltip
+                title="tooltip.kelly.title"
+                description="tooltip.kelly.desc"
+                howToUse="tooltip.kelly.how"
+              />
 
             </h3>
 
@@ -1247,7 +1250,7 @@ export default function Dashboard() {
 
               <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
 
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>Tamaño Recomendado</span>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('actuarial.recommendedSize')}</span>
 
                 <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${displayData.actionableData.positionSizing.recommendedSizeUSD}</span>
 
@@ -1255,7 +1258,7 @@ export default function Dashboard() {
 
               <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
 
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>% del Portafolio</span>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('actuarial.portfolioPct')}</span>
 
                 <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{displayData.actionableData.positionSizing.portfolioPct}%</span>
 
@@ -1263,7 +1266,7 @@ export default function Dashboard() {
 
               <div className="p-4 rounded-xl border border-[var(--signal-sell-dim)]" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
 
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--signal-sell)' }}>Pérdida Máxima Tolerable (VaR 95%)</span>
+                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--signal-sell)' }}>{t('actuarial.maxRisk')}</span>
 
                 <span className="text-2xl font-black" style={{ color: 'var(--signal-sell)' }}>${displayData.actionableData.positionSizing.maxRiskUSD}</span>
 
@@ -1273,7 +1276,7 @@ export default function Dashboard() {
 
             <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
 
-              Basado en el Criterio de <strong>Fractional Kelly</strong> (crecimiento compuesto) y limitado por el <strong>Value at Risk (VaR 95%)</strong> del modelo estocástico sobre un portafolio simulado de $10,000 USD.
+              {t('actuarial.sizingDesc')}
 
             </p>
 
@@ -1331,7 +1334,7 @@ export default function Dashboard() {
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'terminal' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
         >
           <LineChart size={18} />
-          <span className="text-[10px]">Terminal</span>
+          <span className="text-[10px]">{t('tabTerminal')}</span>
         </button>
         <button
           onClick={() => setActiveTab('onchain')}
@@ -1345,22 +1348,22 @@ export default function Dashboard() {
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'actuarial' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
         >
           <Shield size={18} />
-          <span className="text-[10px]">Riesgo</span>
+          <span className="text-[10px]">{t('tab.risk')}</span>
         </button>
         <button
           onClick={() => setActiveTab('portfolio')}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${activeTab === 'portfolio' ? 'text-[var(--accent-gold)] font-bold' : 'text-gray-400 hover:text-white'}`}
         >
           <Wallet size={18} />
-          <span className="text-[10px]">Portafolio</span>
+          <span className="text-[10px]">{t('tab.portfolioShort')}</span>
         </button>
         <button
           onClick={() => setShowSyncModal(true)}
           className="flex flex-col items-center gap-1 p-2 rounded-xl transition-all text-amber-400 hover:text-amber-300"
-          title="Sincronizar Dispositivo"
+          title={t('syncMobileTooltip')}
         >
           <Smartphone size={18} />
-          <span className="text-[10px]">Sincronizar</span>
+          <span className="text-[10px]">{t('tab.sync')}</span>
         </button>
       </div>
 

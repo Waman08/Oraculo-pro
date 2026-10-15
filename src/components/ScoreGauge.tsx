@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import type { Signal } from '@/types';
-import { useLocale } from './AppContext';
+import { useAppSettings } from './AppContext';
 import InfoTooltip from './ui/InfoTooltip';
 
 interface ScoreGaugeProps {
@@ -20,7 +20,7 @@ const SIGNAL_KEY_MAP: Record<Signal, string> = {
 };
 
 export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProps) {
-  const { t } = useLocale();
+  const { t } = useAppSettings();
   const [displayScore, setDisplayScore] = useState(0);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -68,9 +68,9 @@ export default function ScoreGauge({ score, signal, size = 280 }: ScoreGaugeProp
     <div className="flex flex-col items-center animate-scaleIn relative">
       <div className="absolute top-2 right-2 md:-right-4">
         <InfoTooltip 
-          title="Quant Score Maestro (0 a 100)"
-          description="Puntaje algorítmico que combina fuerza de tendencia, volumen, sentimiento y derivados en una sola nota."
-          howToUse="0 a 45: Zona de Venta / Cautela. 45 a 55: Mercado Neutral. 55 a 100: Zona de Compra / Oportunidad."
+          title="tooltip.quantScore.title"
+          description="tooltip.quantScore.desc"
+          howToUse="tooltip.quantScore.how"
           placement="left"
         />
       </div>

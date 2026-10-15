@@ -148,10 +148,15 @@ export default function DCAPanel({ actionableData, currentPrice, symbol }: DCAPa
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
           <Calculator size={16} style={{ color: themeColor }} />
-          Calculadora DCA Pro
+          {t('dca.title') || 'Calculadora DCA'}
+          <InfoTooltip
+            title="tooltip.dca.title"
+            description="tooltip.dca.desc"
+            howToUse="tooltip.dca.how"
+          />
         </h3>
         <span className="text-xs px-2 py-1 rounded-full font-bold uppercase" style={{ background: themeDim, color: themeColor }}>
-          {isBuying ? 'Long / Compra' : 'Short / Venta'}
+          {isBuying ? (t('Compra') || 'Compra') : (t('Venta') || 'Venta')}
         </span>
       </div>
 

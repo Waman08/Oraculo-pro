@@ -4,6 +4,7 @@ import type { SmartMoneyData } from '@/types';
 import { useState, useEffect } from 'react';
 import { useLocale } from './AppContext';
 import { Target, Layers, TrendingUp, TrendingDown, Eye, CheckCircle2 } from 'lucide-react';
+import InfoTooltip from './ui/InfoTooltip';
 
 interface SmartMoneyPanelProps {
   smartMoney: SmartMoneyData;
@@ -48,7 +49,7 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
                     {t('smartmoney.poc') || 'Point of Control (POC)'}
                   </span>
                   <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
-                    {isAbovePoc ? 'Soporte Clave' : 'Resistencia Clave'}
+                    {isAbovePoc ? t('smartmoney.keySupport') : t('smartmoney.keyResistance')}
                   </span>
                 </div>
               </div>
@@ -79,8 +80,13 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
             <div className="flex items-center gap-2 mb-2">
               <Layers size={13} style={{ color: 'var(--text-muted)' }} />
               <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                {t('smartmoney.orderBlocks') || 'Bloques de Órdenes (OB)'}
+                {t('smartmoney.orderBlocks') || 'Order Blocks'}
               </span>
+              <InfoTooltip
+                title="tooltip.orderBlocks.title"
+                description="tooltip.orderBlocks.desc"
+                howToUse="tooltip.orderBlocks.how"
+              />
             </div>
 
             <div className="space-y-2.5">
@@ -107,7 +113,7 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
                           </span>
                         </div>
                         <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider bg-[rgba(255,255,255,0.05)] text-[var(--text-muted)]">
-                          {isBullish ? 'Demanda' : 'Oferta'}
+                          {isBullish ? t('smartmoney.demand') : t('smartmoney.supply')}
                         </span>
                       </div>
 
@@ -117,7 +123,7 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
                         </div>
                         <div className="w-[80px] text-right">
                           <div className="flex items-center justify-between gap-1 mb-0.5">
-                            <span className="text-[8px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>Fuerza</span>
+                            <span className="text-[8px] uppercase font-bold" style={{ color: 'var(--text-muted)' }}>{t('smartmoney.strength')}</span>
                             <span className="text-[9px] font-bold font-mono" style={{ color }}>{ob.strength}%</span>
                           </div>
                           <div className="h-1 w-full bg-[rgba(255,255,255,0.05)] rounded-full overflow-hidden">
@@ -144,8 +150,13 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
             <div className="flex items-center gap-2 mb-2">
               <Layers size={13} style={{ color: 'var(--text-muted)' }} />
               <span className="text-xs font-bold" style={{ color: 'var(--text-muted)' }}>
-                {t('smartmoney.fvg') || 'Brechas de Valor Justo (FVG)'}
+                {t('smartmoney.fvg') || 'Fair Value Gaps'}
               </span>
+              <InfoTooltip
+                title="tooltip.fvg.title"
+                description="tooltip.fvg.desc"
+                howToUse="tooltip.fvg.how"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5">
@@ -178,9 +189,9 @@ export default function SmartMoneyPanel({ smartMoney, currentPrice }: SmartMoney
                         ${formatSMPrice(fvg.low)}—${formatSMPrice(fvg.high)}
                       </div>
                       <div className="flex items-center justify-between text-[8px] font-bold">
-                        <span style={{ color: 'var(--text-muted)' }}>ESTADO</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{t('smartmoney.status')}</span>
                         <span style={{ color: fvg.filled ? 'var(--text-muted)' : color }}>
-                          {fvg.filled ? 'MITIGADO' : 'ABIERTO'}
+                          {fvg.filled ? t('smartmoney.mitigated') : t('smartmoney.open')}
                         </span>
                       </div>
                     </div>
