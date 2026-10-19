@@ -3,6 +3,7 @@ import type { Viewport } from 'next';
 import './globals.css';
 import ToastContainer from '@/components/ToastContainer';
 import CommandPalette from '@/components/CommandPalette';
+import ChunkErrorHandler from '@/components/ChunkErrorHandler';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -48,6 +49,7 @@ export default function RootLayout({
         className="antialiased min-h-screen relative"
         style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif" }}
       >
+        <ChunkErrorHandler />
         <div className="fixed inset-0 pointer-events-none z-[-1]" style={{
           background: 'radial-gradient(circle at 50% 0%, rgba(129, 140, 248, 0.15), transparent 50%), radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.05), transparent 50%), radial-gradient(circle at 0% 100%, rgba(239, 68, 68, 0.05), transparent 50%)'
         }} />

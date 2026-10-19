@@ -16,44 +16,28 @@ import type { MarketAnalysis, ScoreBreakdown, SentimentData } from '@/types';
 
 import { useAppSettings, useLocale } from './AppContext';
 
-const ScoreGauge = dynamic(() => import('./ScoreGauge'), { ssr: false });
-
-const IndicatorGrid = dynamic(() => import('./IndicatorGrid'), { ssr: false });
-
-const DCAPanel = dynamic(() => import('./DCAPanel'), { ssr: false });
-
-const SentimentPanel = dynamic(() => import('./SentimentPanel'), { ssr: false });
-
-const OnChainDashboard = dynamic(() => import('./onchain/OnChainDashboard'), { ssr: false });
-
-const CandlestickChart = dynamic(() => import('./CandlestickChart'), { ssr: false });
-
-const SmartMoneyPanel = dynamic(() => import('./SmartMoneyPanel'), { ssr: false });
-
-import WatchlistPanel from './WatchlistPanel';
-
-import AIPanel from './AIPanel';
-
-import PortfolioTracker from './PortfolioTracker';
-
-import AlertsPanel from './AlertsPanel';
-
-const ActuarialPanel = dynamic(() => import('./ActuarialPanel'), { ssr: false });
-
 import dynamic from 'next/dynamic';
-
-const ExportReport = dynamic(() => import('./ExportReport'), { ssr: false });
-const ShareCardModal = dynamic(() => import('./ShareCardModal'), { ssr: false });
-const SyncDeviceModal = dynamic(() => import('./SyncDeviceModal'), { ssr: false });
+import ScoreGauge from './ScoreGauge';
+import IndicatorGrid from './IndicatorGrid';
+import DCAPanel from './DCAPanel';
+import SentimentPanel from './SentimentPanel';
+import SmartMoneyPanel from './SmartMoneyPanel';
+import WatchlistPanel from './WatchlistPanel';
+import AIPanel from './AIPanel';
+import PortfolioTracker from './PortfolioTracker';
+import AlertsPanel from './AlertsPanel';
+import ActuarialPanel from './ActuarialPanel';
+import ExportReport from './ExportReport';
+import ShareCardModal from './ShareCardModal';
+import SyncDeviceModal from './SyncDeviceModal';
+import LiquidityPanel from './LiquidityPanel';
+import SupplyDynamicsPanel from './SupplyDynamicsPanel';
+import StablecoinDashboard from './StablecoinDashboard';
 import InfoTooltip from './ui/InfoTooltip';
 
+const OnChainDashboard = dynamic(() => import('./onchain/OnChainDashboard'), { ssr: false });
+const CandlestickChart = dynamic(() => import('./CandlestickChart'), { ssr: false });
 const BacktestChart = dynamic(() => import('./BacktestChart'), { ssr: false });
-
-const LiquidityPanel = dynamic(() => import('./LiquidityPanel'), { ssr: false });
-
-const SupplyDynamicsPanel = dynamic(() => import('./SupplyDynamicsPanel'), { ssr: false });
-
-const StablecoinDashboard = dynamic(() => import('./StablecoinDashboard'), { ssr: false });
 
 import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode, Radar, Clock } from 'lucide-react';
 

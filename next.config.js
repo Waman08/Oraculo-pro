@@ -13,6 +13,19 @@ const nextConfig = {
       { source: '/api/user/:path*', destination: `${pythonApiUrl}/api/user/:path*` },
     ];
   },
+  async headers() {
+    return [
+      {
+        source: '/((?!_next/static|_next/image|favicon.ico).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
