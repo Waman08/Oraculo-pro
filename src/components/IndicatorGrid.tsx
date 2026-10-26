@@ -31,6 +31,63 @@ const CATEGORY_COLORS = {
   onChain: '#10B981',
 };
 
+function formatIndicatorName(name: string, locale: string): string {
+  if (!name) return '';
+  const lower = name.toLowerCase();
+  if (lower.includes('estoc') || lower.includes('stoch')) {
+    return locale === 'en' ? 'Stochastic' : 'Estocástico';
+  }
+  return name;
+}
+
+function formatIndicatorValue(val: any, locale: string): string {
+  if (typeof val === 'number') {
+    return isNaN(val) ? '0.00' : val.toFixed(2);
+  }
+  if (typeof val !== 'string') return String(val ?? '');
+
+  let s = val;
+  // Fix EMA Stack mojibake or raw representations
+  if (s.includes('20') && s.includes('50')) {
+    s = s
+      .replace(/âœ“/g, '✓')
+      .replace(/âœ—/g, '✗')
+      .replace(/â\s*/g, '✓ ')
+      .replace(/✓\s*20/g, '✓ EMA 20')
+      .replace(/✗\s*20/g, '✗ EMA 20')
+      .replace(/✓\s*50/g, '✓ EMA 50')
+      .replace(/✗\s*50/g, '✗ EMA 50')
+      .replace(/✓\s*200/g, '✓ EMA 200')
+      .replace(/✗\s*200/g, '✗ EMA 200');
+  }
+
+  // Fix Supertrend mojibake or arrows
+  if (
+    s.includes('Alcista') || s.includes('Bajista') ||
+    s.includes('Bullish') || s.includes('Bearish') ||
+    s.includes('â–²') || s.includes('â–¼') ||
+    s.includes('â½') || s.includes('â¾')
+  ) {
+    const isBull =
+      s.includes('Alcista') || s.includes('Bullish') ||
+      s.includes('▲') || s.includes('↗') ||
+      s.includes('â–²') || s.includes('â½');
+
+    if (isBull) {
+      return locale === 'en' ? '↗ Bullish' : '↗ Alcista';
+    } else {
+      return locale === 'en' ? '↘ Bearish' : '↘ Bajista';
+    }
+  }
+
+  // Cleanup stray mojibake characters
+  return s
+    .replace(/âœ“/g, '✓')
+    .replace(/âœ—/g, '✗')
+    .replace(/â–²/g, '▲')
+    .replace(/â–¼/g, '▼');
+}
+
 function getTooltipForIndicator(name: string) {
   const n = name.toLowerCase();
   if (n.includes('rsi')) {
@@ -58,7 +115,7 @@ function getTooltipForIndicator(name: string) {
 }
 
 export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -126,6 +183,9 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
               <div className="space-y-2">
                 {data.details?.map((ind, idx) => {
                   const tip = getTooltipForIndicator(ind.name);
+                  const displayName = formatIndicatorName(ind.name, locale);
+                  const displayVal = formatIndicatorValue(ind.value, locale);
+
                   return (
                     <div key={idx} className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
@@ -139,7 +199,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
                               : 'var(--signal-neutral)',
                           }}
                         />
-                        <span style={{ color: 'var(--text-secondary)' }}>{ind.name}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{displayName}</span>
                         {tip && (
                           <InfoTooltip
                             title={tip.title}
@@ -150,7 +210,7 @@ export default function IndicatorGrid({ breakdown }: IndicatorGridProps) {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
-                          {typeof ind.value === 'number' && !isNaN(ind.value) ? ind.value.toFixed(2) : ind.value}
+                          {displayVal}
                         </span>
                         <span
                           className="font-bold text-xs px-2 py-0.5 rounded"

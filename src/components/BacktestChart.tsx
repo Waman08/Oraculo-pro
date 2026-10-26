@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts';
 import { fetchPythonBacktest } from '@/lib/api';
+import { useLocale } from './AppContext';
 import { Play, TrendingUp, Shield, Activity, DollarSign, PieChart, Percent, Clock, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface BacktestChartProps {
@@ -10,6 +11,7 @@ interface BacktestChartProps {
 }
 
 export default function BacktestChart({ symbol }: BacktestChartProps) {
+  const { t, locale } = useLocale();
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [chart, setChart] = useState<IChartApi | null>(null);
   const [strategySeries, setStrategySeries] = useState<ISeriesApi<"Line"> | null>(null);
@@ -28,23 +30,30 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
     if (!chartContainerRef.current) return;
     
     const newChart = createChart(chartContainerRef.current, {
-      layout: { background: { color: 'transparent' }, textColor: '#9CA3AF' },
-      grid: { vertLines: { color: 'rgba(255, 255, 255, 0.05)' }, horzLines: { color: 'rgba(255, 255, 255, 0.05)' } },
-      rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false, timeVisible: true },
-      height: 350
+      layout: {
+        background: { type: 'solid' as any, color: 'transparent' },
+        textColor: '#94A3B8',
+      },
+      grid: {
+        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+      },
+      timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true },
+      rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+      autoSize: true,
     });
 
     const sSeries = newChart.addLineSeries({
       color: '#3B82F6',
       lineWidth: 2,
-      crosshairMarkerRadius: 4,
+      title: locale === 'en' ? 'Strategy' : 'Estrategia',
     });
 
     const bSeries = newChart.addLineSeries({
-      color: '#6B7280',
+      color: '#64748B',
       lineWidth: 1,
-      lineStyle: 2, 
+      lineStyle: 2, // Dashed
+      title: 'Buy & Hold',
     });
 
     setChart(newChart);
@@ -62,41 +71,29 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
       window.removeEventListener('resize', handleResize);
       newChart.remove();
     };
-  }, []);
+  }, [locale]);
 
   const runBacktest = async () => {
     if (!symbol) return;
     setLoading(true);
     try {
-      const data = await fetchPythonBacktest(symbol, timeframe, mode, days, feeRate);
-      if (data && !data.error) {
-        setResults(data);
+      const res = await fetchPythonBacktest(symbol, timeframe, mode, days, feeRate);
+      if (res && res.metrics) {
+        setResults(res);
         
-        if (strategySeries && data.equityCurve) {
-          const eqData = data.equityCurve.map((d: any) => {
-             const ts = new Date(d.time).getTime() / 1000;
-             return { time: ts as any, value: d.value };
-          }).filter((d: any) => !isNaN(d.time)).sort((a: any, b: any) => a.time - b.time);
+        // Populate chart
+        if (strategySeries && bhSeries && res.equity_curves) {
+          const sData = (res.equity_curves.strategy || []).map((p: any) => ({
+            time: Math.floor(new Date(p.time).getTime() / 1000) as any,
+            value: p.equity,
+          }));
           
-          if (eqData.length > 0) strategySeries.setData(eqData);
-          
-          if (data.markers && data.markers.length > 0) {
-             const formattedMarkers = data.markers.map((m: any) => ({
-                time: (new Date(m.time).getTime() / 1000) as any,
-                position: m.position,
-                color: m.color,
-                shape: m.shape,
-                text: m.text
-             })).filter((m: any) => !isNaN(m.time)).sort((a: any, b: any) => a.time - b.time);
-             strategySeries.setMarkers(formattedMarkers);
-          }
-        }
-        
-        if (bhSeries && data.bhEquityCurve) {
-          const bhData = data.bhEquityCurve.map((d: any) => {
-             const ts = new Date(d.time).getTime() / 1000;
-             return { time: ts as any, value: d.value };
-          }).filter((d: any) => !isNaN(d.time)).sort((a: any, b: any) => a.time - b.time);
+          if (sData.length > 0) strategySeries.setData(sData);
+
+          const bhData = (res.equity_curves.buy_and_hold || []).map((p: any) => ({
+            time: Math.floor(new Date(p.time).getTime() / 1000) as any,
+            value: p.equity,
+          }));
           
           if (bhData.length > 0) bhSeries.setData(bhData);
         }
@@ -116,17 +113,17 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
       {/* Top Bar Controls */}
       <div className="bg-black/30 rounded-xl p-4 border border-white/5 flex flex-wrap items-end gap-4">
         <div className="flex-1 min-w-[120px]">
-          <label className="text-xs font-semibold text-gray-400 mb-1 block">Rango Temporal</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1 block">{t('backtest.timeRange')}</label>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500">
-            <option value={30}>30 días</option>
-            <option value={90}>90 días</option>
-            <option value={180}>180 días</option>
-            <option value={365}>1 año</option>
+            <option value={30}>{t('backtest.days30')}</option>
+            <option value={90}>{t('backtest.days90')}</option>
+            <option value={180}>{t('backtest.days180')}</option>
+            <option value={365}>{t('backtest.days365')}</option>
           </select>
         </div>
         
         <div className="flex-1 min-w-[100px]">
-          <label className="text-xs font-semibold text-gray-400 mb-1 block">Temporalidad</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1 block">{t('controls.timeframe')}</label>
           <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500">
             <option value="1H">1H</option>
             <option value="4H">4H</option>
@@ -135,16 +132,16 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
         </div>
 
         <div className="flex-1 min-w-[120px]">
-          <label className="text-xs font-semibold text-gray-400 mb-1 block">Régimen Riesgo</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1 block">{t('backtest.riskMode')}</label>
           <select value={mode} onChange={(e) => setMode(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500">
-            <option value="Conservador">Conservador</option>
-            <option value="Balanceado">Balanceado</option>
-            <option value="Agresivo">Agresivo</option>
+            <option value="Conservador">{t('mode.safe')}</option>
+            <option value="Balanceado">{t('mode.balanced')}</option>
+            <option value="Agresivo">{t('mode.aggressive')}</option>
           </select>
         </div>
 
         <div className="w-[100px]">
-          <label className="text-xs font-semibold text-gray-400 mb-1 block">Fee Rate (%)</label>
+          <label className="text-xs font-semibold text-gray-400 mb-1 block">{t('backtest.feeRate')}</label>
           <input type="number" step="0.01" value={feeRate} onChange={(e) => setFeeRate(Number(e.target.value))} className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500" />
         </div>
 
@@ -154,7 +151,7 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
           className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded-lg flex items-center gap-2 transition-colors disabled:opacity-50 h-[38px]"
         >
           {loading ? <span className="block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Play size={16} />}
-          Ejecutar Backtest
+          {t('backtest.run')}
         </button>
       </div>
 
@@ -162,15 +159,15 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
       <div className="relative w-full rounded-xl overflow-hidden border border-white/5 bg-black/20" style={{ height: 350 }}>
         <div ref={chartContainerRef} className="absolute inset-0" />
         {!results && !loading && (
-          <div className="absolute inset-0 flex items-center justify-center text-gray-500 font-semibold bg-black/40 backdrop-blur-sm z-10">
-            Configura los parámetros y haz clic en Ejecutar
+          <div className="absolute inset-0 flex items-center justify-center text-gray-500 font-semibold bg-black/40 backdrop-blur-sm z-10 text-center px-4">
+            {t('backtest.empty')}
           </div>
         )}
       </div>
 
       {/* Legend */}
       <div className="flex gap-4 text-xs font-semibold">
-        <div className="flex items-center gap-1 text-blue-400"><div className="w-3 h-0.5 bg-blue-500"></div> Estrategia Cuantitativa</div>
+        <div className="flex items-center gap-1 text-blue-400"><div className="w-3 h-0.5 bg-blue-500"></div> {t('backtest.strategy')}</div>
         <div className="flex items-center gap-1 text-gray-400"><div className="w-3 h-0.5 bg-gray-500 border-dashed"></div> Buy & Hold</div>
       </div>
 
@@ -178,11 +175,11 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
       {m && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><TrendingUp size={12}/> Retorno Neto</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><TrendingUp size={12}/> {t('backtest.netReturn')}</div>
             <div className={`text-lg font-bold ${m.netReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>{m.netReturn >= 0 ? '+' : ''}{m.netReturn.toFixed(2)}%</div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Percent size={12}/> CAGR</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Percent size={12}/> {t('backtest.cagr')}</div>
             <div className={`text-lg font-bold ${m.cagr >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{m.cagr >= 0 ? '+' : ''}{m.cagr.toFixed(2)}%</div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
@@ -190,24 +187,24 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
             <div className="text-lg font-bold text-white">{m.sharpe.toFixed(2)} <span className="text-xs text-gray-500">/ {m.sortino.toFixed(2)}</span></div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Shield size={12}/> Max Drawdown</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Shield size={12}/> {t('backtest.maxDrawdown')}</div>
             <div className="text-lg font-bold text-red-400">-{m.maxDrawdown.toFixed(2)}%</div>
           </div>
           
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><PieChart size={12}/> Win Rate</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><PieChart size={12}/> {t('backtest.winRate')}</div>
             <div className="text-lg font-bold text-green-400">{m.winRate.toFixed(1)}%</div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><AlertTriangle size={12}/> Profit Factor</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><AlertTriangle size={12}/> {t('backtest.profitFactor')}</div>
             <div className="text-lg font-bold text-white">{m.profitFactor.toFixed(2)}</div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={12}/> Operaciones</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock size={12}/> {t('backtest.trades')}</div>
             <div className="text-lg font-bold text-white">{m.totalTrades}</div>
           </div>
           <div className="bg-black/30 p-3 rounded-xl border border-white/5">
-            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><DollarSign size={12}/> Comisiones Pagadas</div>
+            <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><DollarSign size={12}/> {t('backtest.totalFees')}</div>
             <div className="text-lg font-bold text-gray-400">${m.totalFees.toFixed(2)}</div>
           </div>
         </div>
@@ -220,7 +217,7 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
             onClick={() => setShowTrades(!showTrades)}
             className="w-full flex items-center justify-between p-4 text-sm font-bold text-gray-300 hover:bg-white/5 transition-colors"
           >
-            Historial de Operaciones ({results.trades.length})
+            {t('backtest.history')} ({results.trades.length})
             {showTrades ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
           
@@ -229,22 +226,22 @@ export default function BacktestChart({ symbol }: BacktestChartProps) {
               <table className="w-full text-left text-xs text-gray-400">
                 <thead className="bg-white/5 uppercase font-semibold">
                   <tr>
-                    <th className="px-4 py-2">Fecha Entrada</th>
-                    <th className="px-4 py-2">Precio Entrada</th>
-                    <th className="px-4 py-2">Fecha Salida</th>
-                    <th className="px-4 py-2">Precio Salida</th>
-                    <th className="px-4 py-2 text-right">PnL Neto</th>
+                    <th className="px-4 py-2">{t('backtest.entryDate')}</th>
+                    <th className="px-4 py-2">{t('backtest.entryPrice')}</th>
+                    <th className="px-4 py-2">{t('backtest.exitDate')}</th>
+                    <th className="px-4 py-2">{t('backtest.exitPrice')}</th>
+                    <th className="px-4 py-2 text-right">{t('backtest.netPnl')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
-                  {results.trades.map((t: any, i: number) => (
+                  {results.trades.map((tTrade: any, i: number) => (
                     <tr key={i} className="hover:bg-white/5 transition-colors">
-                      <td className="px-4 py-2">{new Date(t.entryDate).toLocaleString()}</td>
-                      <td className="px-4 py-2 font-mono">${t.entryPrice.toFixed(4)}</td>
-                      <td className="px-4 py-2">{new Date(t.exitDate).toLocaleString()}</td>
-                      <td className="px-4 py-2 font-mono">${t.exitPrice.toFixed(4)}</td>
-                      <td className={`px-4 py-2 font-bold text-right ${t.pnlPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                        {t.pnlPct >= 0 ? '+' : ''}{t.pnlPct.toFixed(2)}%
+                      <td className="px-4 py-2">{new Date(tTrade.entryDate).toLocaleString()}</td>
+                      <td className="px-4 py-2 font-mono">${tTrade.entryPrice.toFixed(4)}</td>
+                      <td className="px-4 py-2">{new Date(tTrade.exitDate).toLocaleString()}</td>
+                      <td className="px-4 py-2 font-mono">${tTrade.exitPrice.toFixed(4)}</td>
+                      <td className={`px-4 py-2 font-bold text-right ${tTrade.pnlPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {tTrade.pnlPct >= 0 ? '+' : ''}{tTrade.pnlPct.toFixed(2)}%
                       </td>
                     </tr>
                   ))}

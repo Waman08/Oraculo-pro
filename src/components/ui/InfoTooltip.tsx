@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { HelpCircle } from 'lucide-react';
 import { useLocale } from '../AppContext';
@@ -12,9 +12,9 @@ interface InfoTooltipProps {
   placement?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-export default function InfoTooltip({ title, description, howToUse, placement = 'top' }: InfoTooltipProps) {
+export default function InfoTooltip({ title, description, howToUse }: InfoTooltipProps) {
   const { t, locale } = useLocale();
-  const [isVisible, setIsVisible] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; placeAbove: boolean }>({
     top: 0,
@@ -23,21 +23,19 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
   });
 
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const updatePosition = useCallback(() => {
+  const updatePosition = () => {
     if (!buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
-    const tooltipWidth = 260; // w-64 is 256px
-    const tooltipEstimatedHeight = 160;
+    const tooltipWidth = 260;
 
-    // Check if there is enough space above
-    const hasSpaceAbove = rect.top > tooltipEstimatedHeight;
-    const placeAbove = placement === 'bottom' ? false : hasSpaceAbove;
+    // Check if there is enough space above (requires ~160px)
+    const placeAbove = rect.top >= 170;
+    const top = placeAbove ? rect.top - 10 : rect.bottom + 10;
 
     // Center horizontally on the icon, clamped to viewport bounds
     let left = rect.left + rect.width / 2;
@@ -48,46 +46,33 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
       left = window.innerWidth - padding - tooltipWidth / 2;
     }
 
-    const top = placeAbove ? rect.top - 8 : rect.bottom + 8;
     setCoords({ top, left, placeAbove });
-  }, [placement]);
+  };
 
   const handleOpen = () => {
     updatePosition();
-    setIsVisible(true);
+    setIsOpen(true);
   };
 
   const handleClose = () => {
-    setIsVisible(false);
+    setIsOpen(false);
   };
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isOpen) return;
 
     const handleScrollOrResize = () => {
       updatePosition();
     };
 
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (
-        buttonRef.current && !buttonRef.current.contains(target) &&
-        tooltipRef.current && !tooltipRef.current.contains(target)
-      ) {
-        setIsVisible(false);
-      }
-    };
-
     window.addEventListener('scroll', handleScrollOrResize, true);
     window.addEventListener('resize', handleScrollOrResize);
-    document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
       window.removeEventListener('scroll', handleScrollOrResize, true);
       window.removeEventListener('resize', handleScrollOrResize);
-      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isVisible, updatePosition]);
+  }, [isOpen]);
 
   const displayTitle = t(title);
   const displayDescription = t(description);
@@ -104,7 +89,7 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
         onMouseLeave={handleClose}
         onClick={(e) => {
           e.stopPropagation();
-          if (isVisible) handleClose();
+          if (isOpen) handleClose();
           else handleOpen();
         }}
         aria-label={`${locale === 'en' ? 'Help' : 'Ayuda'}: ${displayTitle}`}
@@ -112,11 +97,8 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
         <HelpCircle size={14} />
       </button>
 
-      {mounted && isVisible && createPortal(
+      {mounted && isOpen && createPortal(
         <div
-          ref={tooltipRef}
-          onMouseEnter={() => setIsVisible(true)}
-          onMouseLeave={handleClose}
           style={{
             position: 'fixed',
             top: `${coords.top}px`,
@@ -124,7 +106,7 @@ export default function InfoTooltip({ title, description, howToUse, placement = 
             transform: coords.placeAbove ? 'translate(-50%, -100%)' : 'translate(-50%, 0)',
             zIndex: 99999,
           }}
-          className="w-64 p-3 rounded-xl bg-[#0F172A]/95 border border-white/10 shadow-2xl backdrop-blur-md text-xs text-left animate-fadeIn pointer-events-auto"
+          className="w-64 p-3 rounded-xl bg-[#0F172A]/95 border border-white/10 shadow-2xl backdrop-blur-md text-xs text-left animate-fadeIn pointer-events-none select-none"
         >
           <h4 className="font-bold text-[var(--accent-gold)] mb-1">{displayTitle}</h4>
           <p className="text-gray-300 leading-relaxed">{displayDescription}</p>

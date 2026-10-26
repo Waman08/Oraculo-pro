@@ -240,19 +240,19 @@ export default function Screener() {
       {/* Table Container */}
       <div className="glass-card overflow-hidden">
         <div className="overflow-x-auto">
-          <div className="min-w-[700px]">
+          <div className="min-w-[760px]">
             {/* Header */}
             <div
               className="grid gap-2 px-4 py-3 text-xs font-bold tracking-wider uppercase bg-black/20 select-none"
               style={{
-                gridTemplateColumns: '40px 1.5fr 100px 80px 70px 70px 120px',
+                gridTemplateColumns: '45px 1.4fr 125px 105px 75px 75px 130px',
                 borderBottom: '1px solid var(--border-color)',
                 color: 'var(--text-muted)',
               }}
             >
               <div className="text-center cursor-default">Rank</div>
               <div className="cursor-pointer hover:text-white group flex items-center gap-1" onClick={() => handleSort('symbol')}>
-                Símbolo <SortIcon col="symbol" />
+                {t('screener.symbol') || 'Símbolo'} <SortIcon col="symbol" />
               </div>
               <div className="text-right cursor-pointer hover:text-white group flex items-center justify-end gap-1" onClick={() => handleSort('price')}>
                 <SortIcon col="price" /> {t('screener.price')}
@@ -280,7 +280,7 @@ export default function Screener() {
                   }}
                   className="group grid gap-2 px-4 py-3 text-sm items-center transition-all cursor-pointer hover:bg-white/5 border-b border-white/5 last:border-0"
                   style={{
-                    gridTemplateColumns: '40px 1.5fr 100px 80px 70px 70px 120px',
+                    gridTemplateColumns: '45px 1.4fr 125px 105px 75px 75px 130px',
                     color: 'var(--text-primary)',
                   }}
                 >

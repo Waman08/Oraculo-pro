@@ -10,7 +10,7 @@ interface LiquidityPanelProps {
 }
 
 export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -46,7 +46,7 @@ export default function LiquidityPanel({ liquidity }: LiquidityPanelProps) {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
             <Droplet size={14} className="text-blue-400" />
-            {t('liquidity.title') || 'Liquidez & Derivados'}
+            {t('liquidity.title') || (locale === 'en' ? 'Liquidity & Derivatives' : 'Liquidez & Derivados')}
           </h3>
           <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[rgba(59,130,246,0.1)] text-blue-400 border border-[rgba(59,130,246,0.2)]">
             BINANCE FUTURES

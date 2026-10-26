@@ -1,5 +1,5 @@
 // ============================================================
-// MOTOR ML â Weighted Scoring AlgorÃ­tmico Completo
+// MOTOR ML â Weighted Scoring Algorítmico Completo
 // ============================================================
 
 import type {
@@ -44,10 +44,10 @@ function scoreMomentum(ind: FullIndicatorSet): { score: number; details: Indicat
     signal: ind.rsi < 30 ? 'bullish' : ind.rsi > 70 ? 'bearish' : 'neutral',
   });
 
-  // EstocÃ¡stico
+  // Estocástico
   const stochScore = (ind.stochastic.k + ind.stochastic.d) / 2;
   details.push({
-    name: 'EstocÃ¡stico',
+    name: 'Estocástico',
     value: `K:${ind.stochastic.k.toFixed(1)} D:${ind.stochastic.d.toFixed(1)}`,
     contribution: stochScore * 0.30,
     signal: stochScore < 20 ? 'bullish' : stochScore > 80 ? 'bearish' : 'neutral',
@@ -77,7 +77,7 @@ function scoreTrend(ind: FullIndicatorSet, price: number): { score: number; deta
   const emaStackScore = (aboveEma20 ? 25 : 0) + (aboveEma50 ? 25 : 0) + (aboveEma200 ? 25 : 0);
   details.push({
     name: 'EMA Stack',
-    value: `${aboveEma20 ? 'â' : 'â'}20 ${aboveEma50 ? 'â' : 'â'}50 ${aboveEma200 ? 'â' : 'â'}200`,
+    value: `${aboveEma20 ? '✓' : '✗'} EMA 20  ${aboveEma50 ? '✓' : '✗'} EMA 50  ${aboveEma200 ? '✓' : '✗'} EMA 200`,
     contribution: emaStackScore * 0.35,
     signal: emaStackScore > 50 ? 'bearish' : emaStackScore < 25 ? 'bullish' : 'neutral',
   });
@@ -95,7 +95,7 @@ function scoreTrend(ind: FullIndicatorSet, price: number): { score: number; deta
   const stScore = ind.supertrend.direction === 'up' ? 70 : 30;
   details.push({
     name: 'Supertrend',
-    value: ind.supertrend.direction === 'up' ? 'â² Alcista' : 'â¼ Bajista',
+    value: ind.supertrend.direction === 'up' ? '↗ Alcista' : '↘ Bajista',
     contribution: stScore * 0.20,
     signal: ind.supertrend.direction === 'up' ? 'bearish' : 'bullish',
   });
@@ -213,7 +213,7 @@ function calculateDCA(price: number, signal: Signal, atr: number): DCALevel[] {
   const levels: DCALevel[] = [];
 
   if (signal === 'Compra Fuerte' || signal === 'Compra') {
-    // DCA de compra hacia abajo â promediar mÃ¡s barato
+    // DCA de compra hacia abajo â promediar más barato
     const steps = signal === 'Compra Fuerte' ? 5 : 3;
     for (let i = 1; i <= steps; i++) {
       const pct = i * 0.05;
