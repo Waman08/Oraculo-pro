@@ -8,6 +8,11 @@ export default function AIPanel({ data }: { data: MarketAnalysis }) {
 
   const predictionStr = data.ml?.prediction?.prediction;
   const confidence = data.ml?.prediction?.confidence;
+  const displayConfidence = confidence !== undefined && confidence !== null
+    ? (Number(confidence) > 1 
+        ? Math.min(99.9, Number(confidence)).toFixed(1) 
+        : (Number(confidence) * 100).toFixed(1))
+    : null;
   const isAnomaly = data.ml?.volume_anomaly?.anomaly;
 
   const patterns = data.candlestickPatterns || {};
@@ -28,8 +33,8 @@ export default function AIPanel({ data }: { data: MarketAnalysis }) {
           <div className="text-lg font-bold" style={{ color: predictionStr === 'Bullish' || (typeof predictionStr === 'number' && predictionStr > data.currentPrice) ? 'var(--signal-buy)' : 'var(--signal-sell)' }}>
             {predictionStr ? (typeof predictionStr === 'number' ? `$${predictionStr.toFixed(2)}` : predictionStr) : 'N/A'}
           </div>
-          {confidence && (
-            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Confidence: {(confidence * 100).toFixed(0)}%</div>
+          {displayConfidence && (
+            <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Confidence: {displayConfidence}%</div>
           )}
         </div>
         <div className="rounded-lg p-3" style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)' }}>

@@ -901,7 +901,12 @@ export default function Dashboard() {
             <BarChart3 size={11} />
 
             Vol: {(() => {
-              const rawVol = (displayData as any).quoteVolume24h ?? ((displayData.volumePeriod ?? displayData.volume24h ?? 0) * (displayData.currentPrice || 1));
+              let rawVol = (displayData as any).quoteVolume24h ?? displayData.volume24h ?? 0;
+              if (!rawVol && displayData.volumePeriod) {
+                rawVol = displayData.volumePeriod < 1_000_000
+                  ? displayData.volumePeriod * (displayData.currentPrice || 1)
+                  : displayData.volumePeriod;
+              }
               if (rawVol >= 1e9) return `$${(rawVol / 1e9).toFixed(2)}B`;
               if (rawVol >= 1e6) return `$${(rawVol / 1e6).toFixed(2)}M`;
               if (rawVol >= 1e3) return `$${(rawVol / 1e3).toFixed(1)}k`;

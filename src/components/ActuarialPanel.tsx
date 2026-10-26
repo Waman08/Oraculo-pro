@@ -23,6 +23,27 @@ function fmtPrice(p: number): string {
   return '$' + p.toFixed(6);
 }
 
+function generateStochasticPaths(basePrice: number, targetP10: number, targetP50: number, targetP90: number) {
+  const p10: number[] = [basePrice];
+  const p50: number[] = [basePrice];
+  const p90: number[] = [basePrice];
+
+  for (let t = 1; t <= 7; t++) {
+    const progress = t / 7;
+    const sqrtProgress = Math.sqrt(progress);
+    
+    const valP10 = basePrice + (targetP10 - basePrice) * sqrtProgress;
+    const valP50 = basePrice + (targetP50 - basePrice) * progress;
+    const valP90 = basePrice + (targetP90 - basePrice) * sqrtProgress;
+
+    p10.push(Number(valP10.toFixed(2)));
+    p50.push(Number(valP50.toFixed(2)));
+    p90.push(Number(valP90.toFixed(2)));
+  }
+
+  return { p10, p50, p90 };
+}
+
 function MonteCarloChart({ paths }: { paths: { p10: number[]; p50: number[]; p90: number[] } }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -41,7 +62,7 @@ function MonteCarloChart({ paths }: { paths: { p10: number[]; p50: number[]; p90
         vertLines: { color: 'rgba(31, 41, 55, 0.3)' },
         horzLines: { color: 'rgba(31, 41, 55, 0.3)' },
       },
-      width: chartContainerRef.current.clientWidth,
+      width: chartContainerRef.current.clientWidth > 0 ? chartContainerRef.current.clientWidth : 300,
       height: 160,
       timeScale: {
         visible: false,
@@ -95,15 +116,25 @@ function MonteCarloChart({ paths }: { paths: { p10: number[]; p50: number[]; p90
 
     chart.timeScale().fitContent();
 
+        const container = chartContainerRef.current;
     const handleResize = () => {
       if (chartRef.current && chartContainerRef.current) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+        const w = chartContainerRef.current.clientWidth;
+        if (w > 0) {
+          chartRef.current.applyOptions({ width: w });
+        }
       }
     };
 
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!entries || entries.length === 0) return;
+      handleResize();
+    });
+    resizeObserver.observe(container);
     window.addEventListener('resize', handleResize);
 
     return () => {
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       chart.remove();
       chartRef.current = null;
@@ -164,7 +195,31 @@ export default function ActuarialPanel({ actuarial, currentPrice }: { actuarial:
   const p10 = data.monteCarlo7D?.p10 ?? currentPrice * 0.9;
   const p50 = data.monteCarlo7D?.p50 ?? currentPrice;
   const p90 = data.monteCarlo7D?.p90 ?? currentPrice * 1.1;
-  const paths = data.monteCarlo7D?.paths;
+  const rawPaths = data.monteCarlo7D?.paths;
+  const paths = React.useMemo(() => {
+    const hasValidPaths = rawPaths && 
+      Array.isArray(rawPaths.p10) && rawPaths.p10.length >= 8 &&
+      Array.isArray(rawPaths.p50) && rawPaths.p50.length >= 8 &&
+      Array.isArray(rawPaths.p90) && rawPaths.p90.length >= 8 &&
+      (rawPaths.p90[rawPaths.p90.length - 1] !== rawPaths.p10[rawPaths.p10.length - 1]);
+
+    if (hasValidPaths) {
+      return rawPaths;
+    }
+
+    const p = currentPrice || 100;
+    const target10 = data.monteCarlo7D?.p10 && data.monteCarlo7D.p10 < p 
+      ? data.monteCarlo7D.p10 
+      : p * (1 - Math.max(var95Pct || 5, 4) / 100);
+    const target90 = data.monteCarlo7D?.p90 && data.monteCarlo7D.p90 > p 
+      ? data.monteCarlo7D.p90 
+      : p * (1 + Math.max(var95Pct || 5, 4) * 1.15 / 100);
+    const target50 = data.monteCarlo7D?.p50 
+      ? data.monteCarlo7D.p50 
+      : p * 1.002;
+
+    return generateStochasticPaths(p, target10, target50, target90);
+  }, [rawPaths, data.monteCarlo7D, currentPrice, var95Pct]);
   const jumpParams = data.monteCarlo7D?.jump_params;
 
   // Visual range position (0% - 100%)

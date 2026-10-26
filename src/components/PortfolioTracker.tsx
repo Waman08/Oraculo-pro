@@ -3,17 +3,21 @@
 import { useState, useEffect } from 'react';
 import { useLocale, useAppSettings } from './AppContext';
 import { fetchAllBinancePrices } from '@/lib/api';
-import { Wallet, Plus, Trash2, ArrowUpRight, ArrowDownRight, PieChart, Activity, XCircle, History } from 'lucide-react';
+import { Wallet, Plus, Trash2, ArrowUpRight, ArrowDownRight, PieChart, Activity, XCircle, History, RotateCcw } from 'lucide-react';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
 import { useAppStore } from '@/lib/store';
 import { wsManager } from '@/lib/websocket-manager';
 import { isSupabaseEnabled, getSessionId } from '@/lib/supabase';
 import {
   loadPortfolio, addPortfolioItem, removePortfolioItem,
-  type PortfolioItemLocal,
 } from '@/lib/useSupabaseSync';
-
-const PYTHON_API_URL = process.env.NEXT_PUBLIC_PYTHON_API_URL || 'http://localhost:8000';
+import {
+  getPaperSummary,
+  closePaperPosition,
+  resetPaperAccount,
+  getDefaultPaperData,
+  PaperSummary,
+} from '@/lib/paperTrading';
 
 interface PortfolioItem {
   id: string;
@@ -25,6 +29,7 @@ interface PortfolioItem {
 export default function PortfolioTracker() {
   const { t } = useLocale();
   const { setSymbol } = useAppSettings();
+  const { addToast } = useAppStore();
   
   // Real Portfolio State
   const [items, setItems] = useState<PortfolioItem[]>([]);
@@ -35,7 +40,7 @@ export default function PortfolioTracker() {
   const [activeTab, setActiveTab] = useState<'real' | 'paper'>('real');
   
   // Paper Trading State
-  const [paperData, setPaperData] = useState<any>(null);
+  const [paperData, setPaperData] = useState<PaperSummary | null>(null);
   const [paperLoading, setPaperLoading] = useState(false);
   
   // Modals / forms state
@@ -48,25 +53,38 @@ export default function PortfolioTracker() {
   useEffect(() => {
     const saved = localStorage.getItem('portfolio_items');
     if (saved) {
-      try { setItems(JSON.parse(saved)); } catch {}
+      try {
+        setItems(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error parsing local portfolio', e);
+      }
+    }
+    
+    // Si Supabase estÃ¡ disponible, sincronizar
+    if (isSupabaseEnabled()) {
+      loadPortfolio().then(cloudItems => {
+        if (cloudItems && cloudItems.length > 0) {
+          setItems(cloudItems);
+        }
+      });
     }
     setIsLoaded(true);
-
-    if (isSupabaseEnabled()) {
-      loadPortfolio().then(sbItems => {
-        if (sbItems.length > 0) setItems(sbItems);
-      }).catch(() => {});
-    }
   }, []);
 
-  // Sync Real Portfolio Websockets
+  // Save Real Portfolio on change
   useEffect(() => {
-    if (!isLoaded || activeTab !== 'real') return;
-    localStorage.setItem('portfolio_items', JSON.stringify(items));
-    items.forEach(item => wsManager.subscribe(item.symbol));
+    if (isLoaded) {
+      localStorage.setItem('portfolio_items', JSON.stringify(items));
+    }
+  }, [items, isLoaded]);
+
+  // Track live prices for real portfolio
+  useEffect(() => {
+    if (!isLoaded) return;
+    const symbols = items.map(i => i.symbol);
+    symbols.forEach(s => wsManager.subscribe(s));
     
     const fetchPrices = async () => {
-      const symbols = Array.from(new Set(items.map(i => i.symbol)));
       if (symbols.length === 0) return;
       const prices = await fetchAllBinancePrices();
       setMultiplePrices(Object.fromEntries(prices));
@@ -79,22 +97,23 @@ export default function PortfolioTracker() {
   // Load Paper Portfolio
   const loadPaperSummary = async () => {
     setPaperLoading(true);
+    const sessionId = getSessionId();
     try {
-      const sessionId = getSessionId();
-      const res = await fetch(`${PYTHON_API_URL}/api/paper/status?session_id=${sessionId}`);
-      if (res.ok) {
-        const data = await res.json();
+      const data = await getPaperSummary(sessionId);
+      if (data) {
         setPaperData(data);
-        
-        // Subscribe to open positions
         if (data.openPositions) {
-           data.openPositions.forEach((p: any) => wsManager.subscribe(p.symbol));
+          data.openPositions.forEach((p) => wsManager.subscribe(p.symbol));
         }
+      } else {
+        setPaperData(getDefaultPaperData(sessionId));
       }
     } catch (err) {
-      console.error(err);
+      console.error('[PaperTracker] Error loading paper summary:', err);
+      setPaperData(getDefaultPaperData(sessionId));
+    } finally {
+      setPaperLoading(false);
     }
-    setPaperLoading(false);
   };
 
   useEffect(() => {
@@ -129,6 +148,43 @@ export default function PortfolioTracker() {
     }
   };
 
+  const handleClosePosition = async (posId: string, currentLivePx: number) => {
+    const sessionId = getSessionId();
+    try {
+      const updated = await closePaperPosition(sessionId, posId, currentLivePx, 'MANUAL');
+      setPaperData(updated);
+      addToast({
+        title: 'Posición Cerrada',
+        message: `La posición fue cerrada exitosamente a $${currentLivePx.toFixed(2)}`,
+        type: 'success',
+      });
+    } catch (err) {
+      console.error('Error cerrando posición simulada:', err);
+      addToast({
+        title: 'Error',
+        message: 'No se pudo cerrar la posición.',
+        type: 'error',
+      });
+    }
+  };
+
+  const handleResetPaper = async () => {
+    if (window.confirm('¿Deseas reiniciar tu cuenta de Paper Trading con el saldo inicial de $10.000 USDT?')) {
+      const sessionId = getSessionId();
+      try {
+        const fresh = await resetPaperAccount(sessionId);
+        setPaperData(fresh);
+        addToast({
+          title: 'Cuenta Reiniciada',
+          message: 'Tu balance demo ha sido restaurado a $10.000,00 USDT.',
+          type: 'info',
+        });
+      } catch (err) {
+        console.error('Error reiniciando paper trading:', err);
+      }
+    }
+  };
+
   const getLivePrice = (symbol: string) => {
     return livePrices[symbol]?.price || 0;
   };
@@ -140,7 +196,6 @@ export default function PortfolioTracker() {
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   
   // Paper Portfolio calculations
-  
   const renderPaperHistory = () => {
     if (!paperData || !paperData.closedPositions || paperData.closedPositions.length === 0) {
       return null;
@@ -167,18 +222,18 @@ export default function PortfolioTracker() {
             </thead>
             <tbody className="divide-y divide-white/5">
               {paperData.closedPositions.slice().reverse().map((pos: any) => {
-                const isWin = pos.pnl_usd >= 0;
-                const d = new Date(pos.closed_at).toLocaleString();
+                const isWin = Number(pos.pnl_usd || 0) >= 0;
+                const d = pos.closed_at ? new Date(pos.closed_at).toLocaleString() : 'Reciente';
                 return (
                   <tr key={pos.id} className="hover:bg-white/5 transition-colors">
                     <td className="p-3 text-gray-500">{d}</td>
                     <td className="p-3 font-bold">{pos.symbol}</td>
-                    <td className={`p-3 font-bold ${pos.side === 'BUY' ? 'text-green-400' : 'text-red-400'}`}>{pos.side}</td>
-                    <td className="p-3 font-mono">${pos.entry_price.toFixed(2)}</td>
-                    <td className="p-3 font-mono">${pos.exit_price?.toFixed(2) || 'N/A'}</td>
+                    <td className={`p-3 font-bold ${pos.side === 'BUY' || pos.side === 'LONG' ? 'text-green-400' : 'text-red-400'}`}>{pos.side}</td>
+                    <td className="p-3 font-mono">${Number(pos.entry_price || 0).toFixed(2)}</td>
+                    <td className="p-3 font-mono">${pos.exit_price ? Number(pos.exit_price).toFixed(2) : 'N/A'}</td>
                     <td className="p-3"><span className="bg-white/10 px-2 py-1 rounded text-[10px]">{pos.exit_reason || 'MANUAL'}</span></td>
                     <td className={`p-3 font-bold text-right ${isWin ? 'text-green-400' : 'text-red-400'}`}>
-                      {isWin ? '+' : ''}{pos.pnl_usd?.toFixed(2)} ({pos.pnl_pct?.toFixed(2)}%)
+                      {isWin ? '+' : ''}{Number(pos.pnl_usd || 0).toFixed(2)} ({Number(pos.pnl_pct || 0).toFixed(2)}%)
                     </td>
                   </tr>
                 );
@@ -199,8 +254,6 @@ export default function PortfolioTracker() {
       );
     }
     
-    let liveEquity = paperData.account.cash_balance;
-
     return (
       <div className="mt-4">
         <h3 className="text-sm font-bold text-gray-300 mb-3">Posiciones Abiertas</h3>
@@ -214,34 +267,37 @@ export default function PortfolioTracker() {
                 <th className="p-3">Mercado</th>
                 <th className="p-3">Tamaño</th>
                 <th className="p-3 text-right">P&L Vivo</th>
-                <th className="p-3 rounded-tr-lg"></th>
+                <th className="p-3 text-right rounded-tr-lg">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {paperData.openPositions.map((pos: any) => {
-                const livePx = getLivePrice(pos.symbol) || pos.entry_price;
+                const livePx = getLivePrice(pos.symbol) || Number(pos.entry_price || 0);
                 const isLong = pos.side === 'BUY' || pos.side === 'LONG';
                 const pnl = isLong 
-                  ? (livePx - pos.entry_price) * pos.amount 
-                  : (pos.entry_price - livePx) * pos.amount;
-                const pnlPct = (pnl / pos.total_usd) * 100;
-                
-                liveEquity += pos.total_usd + pnl;
+                  ? (livePx - Number(pos.entry_price)) * Number(pos.amount) 
+                  : (Number(pos.entry_price) - livePx) * Number(pos.amount);
+                const totalUsd = Number(pos.total_usd) || (Number(pos.entry_price) * Number(pos.amount)) || 1;
+                const pnlPct = (pnl / totalUsd) * 100;
 
                 return (
                   <tr key={pos.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-3 font-bold cursor-pointer" onClick={() => setSymbol(pos.symbol)}>{pos.symbol}</td>
+                    <td className="p-3 font-bold cursor-pointer hover:text-[var(--accent-gold)]" onClick={() => setSymbol(pos.symbol)}>{pos.symbol}</td>
                     <td className={`p-3 font-bold ${isLong ? 'text-green-400' : 'text-red-400'}`}>{pos.side}</td>
-                    <td className="p-3 font-mono">${pos.entry_price.toFixed(2)}</td>
+                    <td className="p-3 font-mono">${Number(pos.entry_price || 0).toFixed(2)}</td>
                     <td className="p-3 font-mono">${livePx.toFixed(2)}</td>
-                    <td className="p-3">${pos.total_usd.toFixed(2)}</td>
+                    <td className="p-3">${totalUsd.toFixed(2)}</td>
                     <td className={`p-3 font-bold text-right ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)} ({pnlPct.toFixed(2)}%)
                     </td>
                     <td className="p-3 text-right">
-                      {/* En un caso real conectariamos esto al endpoint para cerrar */}
-                      <button className="text-red-400 hover:text-red-300 bg-red-400/10 p-1.5 rounded" title="Cerrar al Mercado">
-                        <XCircle size={14} />
+                      <button 
+                        onClick={() => handleClosePosition(pos.id, livePx)}
+                        className="text-red-400 hover:text-red-300 bg-red-400/10 hover:bg-red-400/20 px-2.5 py-1 rounded inline-flex items-center gap-1 transition-colors" 
+                        title="Cerrar al Mercado"
+                      >
+                        <XCircle size={13} />
+                        <span className="text-[10px] font-semibold">Cerrar</span>
                       </button>
                     </td>
                   </tr>
@@ -374,7 +430,7 @@ export default function PortfolioTracker() {
       ) : (
         /* Paper Trading Simulator Tab */
         <div className="flex flex-col gap-6 animate-fadeInUp">
-          {!paperData ? (
+          {paperLoading && !paperData ? (
              <div className="glass-card p-12 flex justify-center items-center">
                 <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
              </div>
@@ -383,32 +439,42 @@ export default function PortfolioTracker() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="glass-card p-4 border-l-4" style={{ borderLeftColor: 'var(--accent-purple)' }}>
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Equity (Cuenta)</div>
-                  <div className="text-2xl font-black">${paperData.equity.toFixed(2)}</div>
+                  <div className="text-2xl font-black">${(paperData?.equity ?? 10000).toFixed(2)}</div>
                 </div>
-                <div className="glass-card p-4 border-l-4" style={{ borderLeftColor: paperData.metrics.totalReturnPct >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)' }}>
+                <div className="glass-card p-4 border-l-4" style={{ borderLeftColor: (paperData?.metrics?.totalReturnPct ?? 0) >= 0 ? 'var(--signal-buy)' : 'var(--signal-sell)' }}>
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Retorno (Simulador)</div>
-                  <div className={`text-2xl font-black ${paperData.metrics.totalReturnPct >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {paperData.metrics.totalReturnPct >= 0 ? '+' : ''}{paperData.metrics.totalReturnPct.toFixed(2)}%
+                  <div className={`text-2xl font-black ${(paperData?.metrics?.totalReturnPct ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {(paperData?.metrics?.totalReturnPct ?? 0) >= 0 ? '+' : ''}{(paperData?.metrics?.totalReturnPct ?? 0).toFixed(2)}%
                   </div>
                 </div>
                 <div className="glass-card p-4 border-l-4" style={{ borderLeftColor: 'var(--accent-blue)' }}>
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Win Rate (Cerradas)</div>
-                  <div className="text-2xl font-black text-blue-400">{paperData.metrics.winRate}%</div>
+                  <div className="text-2xl font-black text-blue-400">{paperData?.metrics?.winRate ?? 0}%</div>
                 </div>
                 <div className="glass-card p-4 border-l-4 border-yellow-500">
                   <div className="text-xs text-gray-400 uppercase tracking-wider mb-1">Profit Factor</div>
-                  <div className="text-2xl font-black text-yellow-500">{paperData.metrics.profitFactor}</div>
+                  <div className="text-2xl font-black text-yellow-500">{paperData?.metrics?.profitFactor ?? '0.00'}</div>
                 </div>
               </div>
               
               <div className="glass-card p-6 border border-purple-500/20 shadow-[0_0_15px_rgba(168,85,247,0.1)]">
-                 <div className="flex justify-between items-center mb-4">
+                 <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
                     <h3 className="text-xl font-bold flex items-center gap-2">
                        <Activity size={20} className="text-purple-400" />
                        Motor de Paper Trading
                     </h3>
-                    <div className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30">
-                       Modo Auditoría de Señales
+                    <div className="flex items-center gap-2">
+                       <button
+                         onClick={handleResetPaper}
+                         className="text-xs flex items-center gap-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1 rounded-full border border-red-500/30 transition-colors"
+                         title="Reiniciar cuenta a $10.000"
+                       >
+                         <RotateCcw size={11} />
+                         Reiniciar ($10k)
+                       </button>
+                       <div className="text-xs bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full border border-purple-500/30">
+                          Modo Auditoría de Señales
+                       </div>
                     </div>
                  </div>
                  <p className="text-sm text-gray-400 mb-2">

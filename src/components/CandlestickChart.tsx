@@ -39,7 +39,13 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    const container = chartContainerRef.current;
+    const initialWidth = container.clientWidth > 0 ? container.clientWidth : 600;
+    const initialHeight = container.clientHeight > 0 ? container.clientHeight : 340;
+
+    const chart = createChart(container, {
+      width: initialWidth,
+      height: initialHeight,
       layout: {
         background: { type: 'solid' as any, color: 'transparent' },
         textColor: '#94A3B8',
@@ -51,7 +57,6 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       crosshair: { mode: 0 },
       timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true },
       rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
-      autoSize: true,
     });
     
     chartRef.current = chart;
@@ -98,6 +103,7 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
         candlestickSeries.setData(cData);
         volumeSeries.setData(vData);
         lastCandleRef.current = cData[cData.length - 1];
+        chart.timeScale().fitContent();
       }
       setLoading(false);
     };
@@ -105,14 +111,28 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
     loadData();
 
     const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      if (chartContainerRef.current && chartRef.current) {
+        const w = chartContainerRef.current.clientWidth;
+        const h = chartContainerRef.current.clientHeight;
+        if (w > 0) {
+          chartRef.current.applyOptions({ 
+            width: w, 
+            ...(h > 0 ? { height: h } : {}) 
+          });
+        }
       }
     };
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      if (!entries || entries.length === 0) return;
+      handleResize();
+    });
+    resizeObserver.observe(container);
     window.addEventListener('resize', handleResize);
 
     return () => {
       isMounted = false;
+      resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
       chart.remove();
       chartRef.current = null;
@@ -181,7 +201,7 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
   }, [livePrice]);
 
   return (
-    <div className="w-full h-full relative min-h-[280px] h-[350px] glass-card overflow-hidden">
+    <div className="w-full relative h-[420px] min-h-[420px] glass-card overflow-hidden">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20 z-10 backdrop-blur-sm">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-gold"></div>
@@ -189,7 +209,7 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
       )}
       {!loading && (!seriesRef.current || chartContainerRef.current?.childNodes.length === 0) && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10 backdrop-blur-sm text-[#94A3B8]">
-          <div className="text-4xl mb-2">??</div>
+          <div className="text-4xl mb-2">📊</div>
           <div className="text-sm font-semibold">Datos del gráfico no disponibles</div>
           <div className="text-xs opacity-60">No se pudieron cargar velas de este activo</div>
         </div>
@@ -208,9 +228,8 @@ export default function CandlestickChart({ symbol, actionableData }: Candlestick
          )}
       </div>
       <div className="absolute inset-0 pt-16 pb-4 px-4">
-        <div ref={chartContainerRef} className="w-full h-full" />
+        <div ref={chartContainerRef} className="w-full h-full min-h-[340px]" />
       </div>
     </div>
   );
-}
-
+}

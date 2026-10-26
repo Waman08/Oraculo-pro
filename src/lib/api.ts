@@ -193,7 +193,7 @@ async function fetchBinancePriceDirect(symbol: string): Promise<LivePriceData | 
 
   try {
 
-    const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${pair}`);
+    let res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${pair}`);
 
     if (!res.ok) return null;
 
@@ -363,7 +363,7 @@ export async function fetchAllBinancePrices(): Promise<Map<string, LivePriceData
 
     try {
 
-      const res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+      let res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
 
 
 
@@ -505,7 +505,7 @@ export async function fetchFearGreedIndex(): Promise<FearGreedData | null> {
 
     // Try our proxy first (works in production behind same origin)
 
-    const res = await fetch('/api/fear-greed');
+    let res = await fetch('/api/fear-greed');
 
     if (res.ok) {
 
@@ -523,7 +523,7 @@ export async function fetchFearGreedIndex(): Promise<FearGreedData | null> {
 
   try {
 
-    const res = await fetch('https://api.alternative.me/fng/?limit=1');
+    let res = await fetch('https://api.alternative.me/fng/?limit=1');
 
     if (!res.ok) return null;
 
@@ -603,11 +603,21 @@ export async function fetchKlines(
 
   try {
 
-    const res = await fetch(
+    let res = await fetch(
 
-      `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`
+      `https://data-api.binance.vision/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`
 
     );
+
+    if (!res.ok) {
+      try {
+        res = await fetch(
+          `https://api.binance.com/api/v3/klines?symbol=${pair}&interval=${interval}&limit=${limit}`
+        );
+      } catch {
+        return null;
+      }
+    }
 
     if (!res.ok) return null;
 
@@ -708,7 +718,7 @@ export async function initializeDynamicSymbols(): Promise<void> {
 
   try {
 
-    const res = await fetch(`${PYTHON_API_URL}/api/symbols`);
+    let res = await fetch(`${PYTHON_API_URL}/api/symbols`);
 
     if (!res.ok) return;
 
@@ -778,7 +788,7 @@ export async function fetchPythonAnalysis(
 
 
 
-    const res = await fetch(
+    let res = await fetch(
 
       `${PYTHON_API_URL}/api/analyze/${symbol.toUpperCase()}?timeframe=${timeframe}&mode=${mode}`,
 
@@ -853,7 +863,7 @@ export async function fetchPythonScreener(
 
 
 
-    const res = await fetch(
+    let res = await fetch(
 
       `${PYTHON_API_URL}/api/screener?timeframe=${timeframe}&mode=${mode}&limit=${limit}`,
 
@@ -906,7 +916,7 @@ export async function checkPythonBackendHealth(): Promise<boolean> {
 
 
 
-    const res = await fetch(`${PYTHON_API_URL}/api/health`, {
+    let res = await fetch(`${PYTHON_API_URL}/api/health`, {
 
       signal: controller.signal,
 
@@ -938,7 +948,7 @@ export async function fetchTop100(): Promise<void> {
 
   try {
 
-    const res = await fetch('/api/coingecko/top');
+    let res = await fetch('/api/coingecko/top');
 
     if (!res.ok) return;
 
@@ -1004,7 +1014,7 @@ export async function searchDexScreener(query: string): Promise<DexScreenerPair[
 
   try {
 
-    const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(query)}`);
+    let res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${encodeURIComponent(query)}`);
 
     if (!res.ok) return [];
 
@@ -1048,7 +1058,7 @@ export async function fetchBacktestFromServer(
 
 
 
-    const res = await fetch(
+    let res = await fetch(
 
       `${PYTHON_API_URL}/api/backtest?symbol=${symbol.toUpperCase()}&timeframe=${timeframe}&limit=${limit}`,
 
@@ -1100,7 +1110,7 @@ export async function fetchPythonBacktest(
     const url = `${PYTHON_API_URL}/api/backtest?symbol=${symbol.toUpperCase()}&timeframe=${timeframe}&days=${days}&mode=${mode}&feeRate=${feeRate}`;
     console.log("[fetchPythonBacktest] Requesting:", url);
 
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       signal: controller.signal,
       headers: {
         'Accept': 'application/json',
