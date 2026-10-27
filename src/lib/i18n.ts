@@ -128,6 +128,29 @@ export const translations: Record<Locale, Record<string, string>> = {
     'onchain.minerPrice': 'Costo de Minería BTC',
     'onchain.accumulation': 'Acumulación',
     'onchain.distribution': 'Distribución',
+    'onchain.catFundamentals': 'Fundamentos de Red',
+    'onchain.catSupply': 'Dinámica de Oferta',
+    'onchain.catProtocol': 'DeFi & Protocolos L2',
+    'onchain.catSignals': 'Índice de Señales',
+    'onchain.catStablecoins': 'Stablecoins & Liquidez',
+    'onchain.l2Title': 'Ecosistema Layer 2 & Liquidez Institucional',
+    'onchain.l2Badge': 'Bitcoin Modular & DeFi',
+    'onchain.l2Desc': 'Métricas de liquidez fuera de la capa base (L2), protocolos de restaking y colateralización en finanzas descentralizadas.',
+    'onchain.l2Tvl': 'TVL en Bitcoin L2 & Staking',
+    'onchain.wbtcSupply': 'Suministro wBTC en DeFi',
+    'onchain.marketDominance': 'Dominancia de Liquidez Global',
+    'onchain.lightningTitle': 'Lightning Network',
+    'onchain.lightningDesc': 'Canales de micropagos instantáneos y alta frecuencia',
+    'onchain.babylonTitle': 'Babylon Protocol',
+    'onchain.babylonDesc': 'Staking nativo de BTC para seguridad compartida PoS',
+    'onchain.stacksTitle': 'Stacks (sBTC)',
+    'onchain.stacksDesc': 'Contratos inteligentes y DeFi programable sobre BTC',
+    'onchain.wbtcCollateral': 'Principal colateral de reserva en Aave, Sky (MakerDAO), Compound y Uniswap v3.',
+    'onchain.dominanceDesc': 'Activo de reserva con dominancia superior al 58% frente al mercado global y stablecoins.',
+    'onchain.activeAddresses': 'Direcciones Activas (24h)',
+    'onchain.txCount24h': 'Transacciones (24h)',
+    'onchain.hashrate': 'Hashrate Estimado',
+    'onchain.avgFee': 'Comisión Media USD',
 
     // DCA
     'dca.title': 'Niveles DCA',
@@ -293,9 +316,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     'backtest.netPnl': 'PnL Neto',
     'backtest.feeRate': 'Comisión (%)',
 
-    // MiniChart
+    // MiniChart & Overlays
     'chart.title': 'Gráfico',
     'chart.noData': 'Sin datos de gráfico disponibles',
+    'chart.noDataSub': 'No se pudieron cargar velas de este activo',
+    'chart.emas': 'EMAs (20/50/200)',
+    'chart.dcaLevels': 'Niveles DCA',
+    'chart.bollingerBands': 'Bandas Bollinger',
 
     // Export Buttons
     'export.png': 'Exportar PNG',
@@ -517,6 +544,29 @@ export const translations: Record<Locale, Record<string, string>> = {
     'onchain.minerPrice': 'BTC Mining Cost',
     'onchain.accumulation': 'Accumulation',
     'onchain.distribution': 'Distribution',
+    'onchain.catFundamentals': 'Network Fundamentals',
+    'onchain.catSupply': 'Supply Dynamics',
+    'onchain.catProtocol': 'DeFi & Layer 2',
+    'onchain.catSignals': 'Signals Index',
+    'onchain.catStablecoins': 'Stablecoins & Liquidity',
+    'onchain.l2Title': 'Layer 2 Ecosystem & Institutional Liquidity',
+    'onchain.l2Badge': 'Bitcoin Modular & DeFi',
+    'onchain.l2Desc': 'Liquidity metrics beyond base layer (L2), staking protocols with Bitcoin finality, and DeFi collateralization.',
+    'onchain.l2Tvl': 'Bitcoin L2 & Staking TVL',
+    'onchain.wbtcSupply': 'wBTC Supply in DeFi',
+    'onchain.marketDominance': 'Global Liquidity Dominance',
+    'onchain.lightningTitle': 'Lightning Network',
+    'onchain.lightningDesc': 'Instant micro-payment channels & high-frequency routing',
+    'onchain.babylonTitle': 'Babylon Protocol',
+    'onchain.babylonDesc': 'Native BTC staking for shared PoS network security',
+    'onchain.stacksTitle': 'Stacks (sBTC)',
+    'onchain.stacksDesc': 'Smart contracts and programmable DeFi secured by Bitcoin',
+    'onchain.wbtcCollateral': 'Premier collateral asset across Aave, Sky (MakerDAO), Compound and Uniswap v3.',
+    'onchain.dominanceDesc': 'Reserve currency asset commanding over 58% liquidity dominance vs altcoins and stablecoins.',
+    'onchain.activeAddresses': 'Active Addresses (24h)',
+    'onchain.txCount24h': 'Transactions (24h)',
+    'onchain.hashrate': 'Estimated Hashrate',
+    'onchain.avgFee': 'Average Fee USD',
 
     // DCA
     'dca.title': 'DCA Levels',
@@ -682,9 +732,13 @@ export const translations: Record<Locale, Record<string, string>> = {
     'backtest.netPnl': 'Net PnL',
     'backtest.feeRate': 'Fee Rate (%)',
 
-    // MiniChart
+    // MiniChart & Overlays
     'chart.title': 'Chart',
     'chart.noData': 'No chart data available',
+    'chart.noDataSub': 'Could not load candles for this asset',
+    'chart.emas': 'EMAs (20/50/200)',
+    'chart.dcaLevels': 'DCA Levels',
+    'chart.bollingerBands': 'Bollinger Bands',
 
     // Export Buttons
     'export.png': 'Export PNG',
