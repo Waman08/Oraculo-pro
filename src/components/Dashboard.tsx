@@ -1210,68 +1210,17 @@ export default function Dashboard() {
 
       <div className={activeTab === 'actuarial' ? 'flex flex-col gap-6 w-full animate-fadeInUp' : 'hidden'}>
 
-        <ActuarialPanel actuarial={displayData.actuarial} currentPrice={displayData.currentPrice} />
+        <ActuarialPanel 
+          actuarial={displayData.actuarial} 
+          currentPrice={displayData.currentPrice}
+          symbol={displayData.symbol}
+          timeframe={timeframe}
+          quantScore={displayData.quantScore}
+          signal={displayData.signal}
+        />
 
         
 
-        {displayData.actionableData?.positionSizing && displayData.actionableData.positionSizing.recommendedSizeUSD > 0 && (
-
-          <div className="glass-card p-5 border relative overflow-hidden" style={{ borderColor: 'var(--accent-gold)', background: 'rgba(251, 191, 36, 0.03)' }}>
-
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-
-              <Shield size={64} style={{ color: 'var(--accent-gold)' }} />
-
-            </div>
-
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--accent-gold)' }}>
-
-              <Shield size={20} /> {t('actuarial.positionSizing')}
-              <InfoTooltip
-                title="tooltip.kelly.title"
-                description="tooltip.kelly.desc"
-                howToUse="tooltip.kelly.how"
-              />
-
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-              <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
-
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('actuarial.recommendedSize')}</span>
-
-                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>${displayData.actionableData.positionSizing.recommendedSizeUSD}</span>
-
-              </div>
-
-              <div className="p-4 rounded-xl" style={{ background: 'var(--bg-tertiary)' }}>
-
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{t('actuarial.portfolioPct')}</span>
-
-                <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>{displayData.actionableData.positionSizing.portfolioPct}%</span>
-
-              </div>
-
-              <div className="p-4 rounded-xl border border-[var(--signal-sell-dim)]" style={{ background: 'rgba(239, 68, 68, 0.05)' }}>
-
-                <span className="text-xs block mb-1 uppercase tracking-wider font-semibold" style={{ color: 'var(--signal-sell)' }}>{t('actuarial.maxRisk')}</span>
-
-                <span className="text-2xl font-black" style={{ color: 'var(--signal-sell)' }}>${displayData.actionableData.positionSizing.maxRiskUSD}</span>
-
-              </div>
-
-            </div>
-
-            <p className="text-xs mt-4" style={{ color: 'var(--text-muted)' }}>
-
-              {t('actuarial.sizingDesc')}
-
-            </p>
-
-          </div>
-
-        )}
 
       </div>
 
