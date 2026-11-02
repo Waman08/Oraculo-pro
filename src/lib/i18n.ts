@@ -248,6 +248,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     'smartmoney.keySupport': 'Soporte Clave',
     'smartmoney.keyResistance': 'Resistencia Clave',
 
+    // AI & ML
+    'ai.title': 'Análisis IA & Machine Learning',
+    'ai.prediction': 'Predicción ML',
+    'ai.confidence': 'Confianza',
+    'ai.anomaly': 'Anomalía de Volumen Institucional',
+    'ai.detected': 'DETECTADA',
+    'ai.normal': 'NORMAL',
+    'ai.patterns': 'PATRONES DE VELAS',
+    'ai.noPatterns': 'Ningún patrón significativo detectado',
+    'ai.divergences': 'DIVERGENCIAS',
+    'ai.rsiDiv': 'Divergencia RSI',
+    'ai.macdDiv': 'Divergencia MACD',
+    'ai.none': 'Ninguna detectada',
+    'alerts.title': 'ALERTAS DE PRECIO',
+
     // General
     'general.loading': 'Cargando análisis...',
     'general.from': 'desde actual',
@@ -669,6 +684,21 @@ export const translations: Record<Locale, Record<string, string>> = {
     'smartmoney.open': 'OPEN',
     'smartmoney.keySupport': 'Key Support',
     'smartmoney.keyResistance': 'Key Resistance',
+
+    // AI & ML
+    'ai.title': 'AI & ML Analysis',
+    'ai.prediction': 'ML Prediction',
+    'ai.confidence': 'Confidence',
+    'ai.anomaly': 'Whale Volume Anomaly',
+    'ai.detected': 'DETECTED',
+    'ai.normal': 'NORMAL',
+    'ai.patterns': 'PATTERNS',
+    'ai.noPatterns': 'No significant patterns detected.',
+    'ai.divergences': 'DIVERGENCES',
+    'ai.rsiDiv': 'RSI Divergence',
+    'ai.macdDiv': 'MACD Divergence',
+    'ai.none': 'None',
+    'alerts.title': 'PRICE ALERTS',
 
     // General
     'general.loading': 'Loading analysis...',

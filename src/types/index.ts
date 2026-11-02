@@ -169,6 +169,7 @@ export interface MacroData {
   dxy: number;                  // Índice del Dólar
   dxyTrend: 'Alcista' | 'Bajista' | 'Lateral';
   m2Global: number;             // Liquidez global M2
+  m2MoneySupply?: number;       // Alias M2 Money Supply
   m2Trend: 'Expansión' | 'Contracción' | 'Estable';
 }
 

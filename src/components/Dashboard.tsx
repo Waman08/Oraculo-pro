@@ -39,7 +39,7 @@ const OnChainDashboard = dynamic(() => import('./onchain/OnChainDashboard'), { s
 const CandlestickChart = dynamic(() => import('./CandlestickChart'), { ssr: false });
 const BacktestChart = dynamic(() => import('./BacktestChart'), { ssr: false });
 
-import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode, Radar, Clock } from 'lucide-react';
+import { Search, AlertTriangle, TrendingDown, TrendingUp, BarChart3, Wifi, WifiOff, Cpu, Code2, LineChart, Share2, Link2, Database, Shield, Wallet, Smartphone, QrCode, Radar, Clock, Activity } from 'lucide-react';
 
 import { wsManager } from '@/lib/websocket-manager';
 
@@ -828,7 +828,7 @@ export default function Dashboard() {
 
             {dataSource === 'binance' ? <Wifi size={10} /> 
 
-             : dataSource === 'coingecko' ? '??' 
+             : dataSource === 'coingecko' ? <Activity size={10} /> 
 
              : dataSource === 'dexscreener' ? <Search size={10} />
 

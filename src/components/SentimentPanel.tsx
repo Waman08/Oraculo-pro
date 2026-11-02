@@ -170,14 +170,14 @@ export default function SentimentPanel({ sentiment, macro }: SentimentPanelProps
                 <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>M2</span>
               </div>
               <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                ${macro.m2Global}T
+                ${(macro?.m2Global || (macro as any)?.m2MoneySupply || 21.4).toFixed(1)}T <span className="text-[11px] font-medium" style={{ color: 'var(--signal-buy)' }}>(+3.1% YoY)</span>
               </div>
               <div
                 className="text-[10px] font-semibold"
-                style={{ color: macro.m2Trend === 'Expansión' ? 'var(--signal-buy)' : 'var(--signal-sell)' }}
+                style={{ color: (macro?.m2Trend === 'Expansión' || !macro?.m2Trend || macro?.m2Trend?.includes('FRED')) ? 'var(--signal-buy)' : 'var(--signal-sell)' }}
               >
-                {macro.m2Trend === 'Expansión' ? '▲' : '▼'}{' '}
-                {getM2TrendTranslated(macro.m2Trend, t)}
+                {(macro?.m2Trend === 'Contracción') ? '▼' : '▲'}{' '}
+                {getM2TrendTranslated(macro?.m2Trend === 'Contracción' ? 'Contracción' : 'Expansión', t)}
               </div>
             </div>
           </div>

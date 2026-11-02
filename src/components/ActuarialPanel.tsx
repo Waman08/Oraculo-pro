@@ -52,6 +52,8 @@ function fmtPrice(p: number): string {
   return '$' + p.toFixed(6);
 }
 
+const formatUSD = (val: number) => `$${(val ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 function generateStochasticPaths(basePrice: number, targetP10: number, targetP50: number, targetP90: number) {
   const p10: number[] = [basePrice];
   const p50: number[] = [basePrice];
@@ -858,7 +860,7 @@ export default function ActuarialPanel({
                 {t('actuarial.capitalLabel') || 'Capital de Cartera ($ USD)'}
               </label>
               <span className="text-xs font-mono font-bold text-[var(--accent-gold)]">
-                ${portfolioCapital.toLocaleString()}
+                ${portfolioCapital.toLocaleString('en-US')}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -942,7 +944,7 @@ export default function ActuarialPanel({
               {t('actuarial.suggestedSize') || 'Tamaño de Posición Sugerido ($ USD)'}
             </div>
             <div className="text-3xl font-black text-[var(--accent-gold)] font-mono my-1">
-              ${sizingMetrics.suggestedSize.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatUSD(sizingMetrics.suggestedSize)}
             </div>
             <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-2">
               <Layers size={12} className="text-[var(--accent-gold)]" />
@@ -977,7 +979,7 @@ export default function ActuarialPanel({
               {t('actuarial.estimatedLoss') || 'Pérdida Máxima Estimada (VaR $)'}
             </div>
             <div className="text-3xl font-black text-red-400 font-mono my-1">
-              ${sizingMetrics.estimatedLossUSD.toFixed(2)}
+              {formatUSD(sizingMetrics.estimatedLossUSD)}
             </div>
             <div className="text-[11px] text-gray-400 flex items-center gap-1 mt-2">
               <Shield size={12} className="text-red-400" />

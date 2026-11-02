@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAppSettings } from './AppContext';
+import { useAppSettings, useLocale } from './AppContext';
 import { fetchBinancePrice } from '@/lib/api';
 import { Bell, BellOff, Plus, Trash2, CheckCircle2, Send, RefreshCw, Bot, Activity, AlertCircle, Settings, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
@@ -40,6 +40,7 @@ async function syncAlertsToBackend(alerts: PriceAlert[]): Promise<boolean> {
 
 export default function AlertsPanel() {
   const { setSymbol } = useAppSettings();
+  const { locale, t } = useLocale();
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newSymbol, setNewSymbol] = useState('BTC');
@@ -233,7 +234,7 @@ export default function AlertsPanel() {
     <div className="glass-card p-5 animate-fadeInUp">
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <Bell size={16} className="text-blue-400" /> Price Alerts
+          <Bell size={16} className="text-blue-400" /> {t('alerts.title') || (locale === 'es' ? 'ALERTAS DE PRECIO' : 'PRICE ALERTS')}
         </h3>
         
         {/* Real-time Bot Status Badge */}
@@ -254,16 +255,16 @@ export default function AlertsPanel() {
             }}
           >
             {showAdd ? <X size={14} /> : <Plus size={14} />}
-            {showAdd ? 'Cerrar' : 'Agregar'}
+            {showAdd ? (locale === 'es' ? 'Cerrar' : 'Close') : (locale === 'es' ? 'Agregar' : 'Add')}
           </button>
         </div>
       </div>
 
       {permission !== 'granted' && (
         <div className="mb-4 p-3 rounded-lg border flex items-center justify-between bg-orange-500/10 border-orange-500/30 text-orange-400 text-xs">
-          <span className="flex items-center gap-2"><AlertCircle size={14}/> Habilitar notificaciones de navegador</span>
+          <span className="flex items-center gap-2"><AlertCircle size={14}/> {locale === 'es' ? 'Habilitar notificaciones de navegador' : 'Enable browser notifications'}</span>
           <button onClick={requestPermission} className="px-3 py-1 rounded bg-orange-500/20 hover:bg-orange-500/40 transition-colors font-bold">
-            Habilitar
+            {locale === 'es' ? 'Habilitar' : 'Enable'}
           </button>
         </div>
       )}
@@ -273,7 +274,7 @@ export default function AlertsPanel() {
         <div className="p-4 rounded-xl border border-white/10 bg-black/40 shadow-inner">
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div>
-              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Activo</label>
+              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">{locale === 'es' ? 'Activo' : 'Asset'}</label>
               <select 
                 className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white"
                 value={newSymbol} onChange={e => setNewSymbol(e.target.value)}
@@ -284,24 +285,24 @@ export default function AlertsPanel() {
               </select>
             </div>
             <div>
-              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Condición</label>
+              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">{locale === 'es' ? 'Condición' : 'Condition'}</label>
               <select 
                 className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white"
                 value={newCondition} onChange={e => setNewCondition(e.target.value as 'above' | 'below')}
               >
-                <option value="above" className="bg-gray-900 text-white">Cruza Arriba (≥)</option>
-                <option value="below" className="bg-gray-900 text-white">Cruza Abajo (≤)</option>
+                <option value="above" className="bg-gray-900 text-white">{locale === 'es' ? 'Cruza Arriba (≥)' : 'Crosses Above (≥)'}</option>
+                <option value="below" className="bg-gray-900 text-white">{locale === 'es' ? 'Cruza Abajo (≤)' : 'Crosses Below (≤)'}</option>
               </select>
             </div>
             <div className="col-span-2">
-              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Precio Objetivo (USD)</label>
+              <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">{locale === 'es' ? 'Precio Objetivo (USD)' : 'Target Price (USD)'}</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 text-xs">$</span>
                 <input 
                   type="number" step="any" min="0"
                   className="w-full bg-white/5 border border-white/10 rounded-lg p-2 pl-7 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white placeholder-white/20"
                   value={newTarget} onChange={e => setNewTarget(e.target.value)}
-                  placeholder="Ej: 65000"
+                  placeholder={locale === 'es' ? 'Ej: 65000' : 'Ex: 65000'}
                 />
               </div>
             </div>
@@ -310,7 +311,7 @@ export default function AlertsPanel() {
             onClick={handleAdd}
             className="w-full text-xs py-2 rounded-lg font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors"
           >
-            Guardar Alerta
+            {locale === 'es' ? 'Guardar Alerta' : 'Save Alert'}
           </button>
         </div>
       </div>
@@ -318,7 +319,7 @@ export default function AlertsPanel() {
       {alerts.length === 0 ? (
         <div className="text-center py-8 text-xs text-white/40 border border-white/5 rounded-xl bg-black/20 flex flex-col items-center gap-2">
           <BellOff size={20} className="opacity-50" />
-          No hay alertas configuradas
+          {locale === 'es' ? 'No hay alertas configuradas' : 'No alerts configured'}
         </div>
       ) : (
         <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
@@ -345,7 +346,7 @@ export default function AlertsPanel() {
                   <button
                     onClick={(e) => { e.stopPropagation(); resetTriggered(alert.id); }}
                     className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/0 hover:border-blue-500/30"
-                    title="Reactivar alerta"
+                    title={locale === 'es' ? 'Reactivar alerta' : 'Reactivate alert'}
                   >
                     <RefreshCw size={12} />
                   </button>
@@ -373,7 +374,7 @@ export default function AlertsPanel() {
             : 'bg-black/40 border-white/10 text-white/60 hover:bg-white/5 hover:text-white/90'}`}
         >
           {syncingBackend ? <RefreshCw size={12} className="animate-spin" /> : <Send size={12} />}
-          {syncingBackend ? 'Sincronizando...' : backendSynced ? '✓ Sincronizado con Motor Backend' : 'Forzar Sincronización Backend'}
+          {syncingBackend ? (locale === 'es' ? 'Sincronizando...' : 'Syncing...') : backendSynced ? (locale === 'es' ? '✓ Sincronizado con Motor Backend' : '✓ Synced with Backend Engine') : (locale === 'es' ? 'Forzar Sincronización Backend' : 'Force Backend Sync')}
         </button>
       )}
 
@@ -386,6 +387,7 @@ export default function AlertsPanel() {
 // ---- Telegram Config Sub-Component ----
 
 function TelegramConfig({ botStatus }: { botStatus: string }) {
+  const { locale } = useLocale();
   const [showTg, setShowTg] = useState(false);
   const [telegramUser, setTelegramUser] = useState('');
   
@@ -411,7 +413,7 @@ function TelegramConfig({ botStatus }: { botStatus: string }) {
       >
         <span className="flex items-center gap-2 text-xs font-bold text-white/70 group-hover:text-white transition-colors">
           <Settings size={14} className={botStatus === 'running' ? 'text-emerald-400' : 'text-white/40'} />
-          Conexión con Telegram
+          {locale === 'es' ? 'Conexión con Telegram' : 'Telegram Connection'}
         </span>
         <ChevronDown size={14} className={`text-white/40 transition-transform duration-300 ${showTg ? 'rotate-180' : ''}`} />
       </button>
@@ -419,10 +421,10 @@ function TelegramConfig({ botStatus }: { botStatus: string }) {
       <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showTg ? 'max-h-96 opacity-100 mt-3' : 'max-h-0 opacity-0'}`}>
         <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-4">
           <div className="text-xs text-white/60 mb-2">
-            Ingresa tu usuario para que el bot sepa a quién enviarle las alertas.
+            {locale === 'es' ? 'Ingresa tu usuario para que el bot sepa a quién enviarle las alertas.' : 'Enter your username so the bot knows where to send alerts.'}
           </div>
           <div>
-            <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">Tu Usuario de Telegram</label>
+            <label className="text-[10px] text-white/50 mb-1.5 block uppercase tracking-wider font-semibold">{locale === 'es' ? 'Tu Usuario de Telegram' : 'Your Telegram Username'}</label>
             <input 
               type="text" 
               className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500/50 transition-colors text-white placeholder-white/20"
@@ -441,7 +443,7 @@ function TelegramConfig({ botStatus }: { botStatus: string }) {
             className="w-full text-xs py-2 rounded-lg font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 transition-colors flex items-center justify-center gap-2"
           >
             <Send size={14} /> 
-            Conectar con Bot Oficial
+            {locale === 'es' ? 'Conectar con Bot Oficial' : 'Connect to Official Bot'}
           </a>
         </div>
       </div>
