@@ -1158,7 +1158,12 @@ export default function Dashboard() {
 
           <SmartMoneyPanel smartMoney={displayData.smartMoney} currentPrice={displayData.currentPrice} />
 
-          <LiquidityPanel liquidity={displayData.liquidity} />
+          <LiquidityPanel 
+            liquidity={displayData.liquidity} 
+            symbol={displayData.symbol}
+            currentPrice={displayData.currentPrice}
+            volume24h={displayData.volume24h}
+          />
 
         </div>
 

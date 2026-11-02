@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { fetchPythonScreener, fetchAllBinancePrices } from '@/lib/api';
+import { fetchPythonScreener } from '@/lib/api';
 import type { Signal, ScreenerEntry } from '@/types';
-import { generateFullAnalysis } from '@/lib/ml-engine';
 import { CRYPTO_DATABASE } from '@/lib/mock-data';
 import { useAppSettings, useLocale } from './AppContext';
 import { TrendingUp, TrendingDown, Filter, RefreshCw, Search, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
@@ -21,8 +20,44 @@ const SIGNAL_I18N: Record<Signal | 'all', string> = {
 
 type SortCol = 'score' | 'symbol' | 'price' | 'change' | 'rsi';
 
+// Helper to categorize tokens
+const SECTOR_MAP: Record<string, string> = {
+  // Layer 1
+  BTC: 'Layer 1', ETH: 'Layer 1', SOL: 'Layer 1', BNB: 'Layer 1', ADA: 'Layer 1', AVAX: 'Layer 1',
+  DOT: 'Layer 1', NEAR: 'Layer 1', SUI: 'Layer 1', APT: 'Layer 1', SEI: 'Layer 1', KAS: 'Layer 1',
+  TRX: 'Layer 1', ATOM: 'Layer 1', FTM: 'Layer 1', ALGO: 'Layer 1', HBAR: 'Layer 1', INJ: 'Layer 1',
+  ICP: 'Layer 1', TIA: 'Layer 1', TON: 'Layer 1', EGLD: 'Layer 1', FLOW: 'Layer 1', MINA: 'Layer 1',
+  XTZ: 'Layer 1', EOS: 'Layer 1', KSM: 'Layer 1',
+  // Layer 2
+  ARB: 'Layer 2', OP: 'Layer 2', MATIC: 'Layer 2', POL: 'Layer 2', STRK: 'Layer 2', MANTA: 'Layer 2',
+  METIS: 'Layer 2', BLAST: 'Layer 2', ZK: 'Layer 2', IMX: 'Layer 2',
+  // AI & Big Data
+  RENDER: 'AI & Big Data', FET: 'AI & Big Data', TAO: 'AI & Big Data', AGIX: 'AI & Big Data',
+  OCEAN: 'AI & Big Data', GRT: 'AI & Big Data', WLD: 'AI & Big Data', AR: 'AI & Big Data',
+  THETA: 'AI & Big Data', AKT: 'AI & Big Data', JASMY: 'AI & Big Data', IO: 'AI & Big Data',
+  // DeFi
+  UNI: 'DeFi', AAVE: 'DeFi', MKR: 'DeFi', LDO: 'DeFi', CRV: 'DeFi', SNX: 'DeFi', PENDLE: 'DeFi',
+  CAKE: 'DeFi', JUP: 'DeFi', RAY: 'DeFi', COMP: 'DeFi', SUSHI: 'DeFi', DYDX: 'DeFi', RUNE: 'DeFi',
+  ENA: 'DeFi', '1INCH': 'DeFi',
+  // Memecoins
+  DOGE: 'Memecoins', SHIB: 'Memecoins', PEPE: 'Memecoins', WIF: 'Memecoins', BONK: 'Memecoins',
+  FLOKI: 'Memecoins', BOME: 'Memecoins', MEME: 'Memecoins', POPCAT: 'Memecoins', BRETT: 'Memecoins',
+  MEW: 'Memecoins', TURBO: 'Memecoins', NEIRO: 'Memecoins', PUMP: 'Memecoins',
+  // Gaming
+  GALA: 'Gaming', AXS: 'Gaming', SAND: 'Gaming', MANA: 'Gaming', ILV: 'Gaming', RONIN: 'Gaming',
+  BEAM: 'Gaming', PIXEL: 'Gaming', YGG: 'Gaming', PORTAL: 'Gaming',
+  // RWA & Oracles
+  LINK: 'RWA & Oracles', PYTH: 'RWA & Oracles', ONDO: 'RWA & Oracles', OM: 'RWA & Oracles',
+  CHR: 'RWA & Oracles', TRU: 'RWA & Oracles', PAXG: 'RWA & Oracles', XAUT: 'RWA & Oracles'
+};
+
+const STABLE_PAIRS = new Set([
+  'USDCUSDT', 'FDUSDUSDT', 'TUSDUSDT', 'EURUSDT', 'BUSDUSDT', 
+  'DAIUSDT', 'USDEUSDT', 'USDDUSDT', 'AEURUSDT', 'EURIUSDT', 'BFUSDUSDT', 'RWUSDUSDT'
+]);
+
 export default function Screener() {
-  const { timeframe, setTimeframe, mode, setSymbol, setActiveTab } = useAppSettings();
+  const { timeframe, mode, setSymbol, setActiveTab } = useAppSettings();
   const { t } = useLocale();
   
   const [sectorFilter, setSectorFilter] = useState<string>('all');
@@ -46,73 +81,226 @@ export default function Screener() {
       try {
         setData(JSON.parse(cachedData));
         hasCache = true;
-      } catch (e) {}
+      } catch {}
     }
 
     setIsLoading(true);
 
-    const runFastScreener = async () => {
+    const runEmpiricalScreener = async () => {
       try {
-        const prices = await fetchAllBinancePrices();
-        const results: ScreenerEntry[] = [];
-        
-        for (const crypto of CRYPTO_DATABASE) {
-          const livePrice = prices.get(crypto.symbol);
-          const p = livePrice?.price || crypto.price || 0;
-          const pc = livePrice?.priceChange24h || crypto.priceChange24h || 0;
-          const vol = livePrice?.volume24h || crypto.volume24h || 0;
-          
-          if (p > 0) {
-            const analysis = generateFullAnalysis(crypto.symbol, timeframe, mode, p, pc, vol);
-            results.push({
-              rank: 0,
-              symbol: crypto.symbol,
-              name: crypto.name,
-              sector: crypto.category,
-              price: p,
-              priceChange24h: pc,
-              quantScore: analysis.quantScore,
-              signal: analysis.signal,
-              volume24h: vol,
-              rsi: analysis.indicators.rsi || 50,
-              priceChangePeriod: pc,
-              volumePeriod: vol,
-              sparklineData: [p, p, p, p, p, p, p]
+        // Fetch 24hr tickers en una sola peticion ultra-rapida a Binance Vision
+        let res: Response | null = null;
+        try {
+          res = await fetch('https://data-api.binance.vision/api/v3/ticker/24hr');
+        } catch {
+          try {
+            res = await fetch('https://api.binance.com/api/v3/ticker/24hr');
+          } catch {}
+        }
+
+        if (!res || !res.ok) {
+          throw new Error('Binance ticker fetch failed');
+        }
+
+        const tickers: any[] = await res.json();
+        const tickerMap = new Map<string, any>();
+        for (const t of tickers) {
+          tickerMap.set(t.symbol, t);
+        }
+
+        // 1. Obtener la variacion de Bitcoin como benchmark
+        const btc = tickerMap.get('BTCUSDT');
+        const btcChange = btc ? parseFloat(btc.priceChangePercent || '0') : 0;
+
+        // 2. Armar universo Top 100 de criptoactivos:
+        // Primero aseguramos los 65 activos curados de CRYPTO_DATABASE
+        const symbolSet = new Set<string>();
+        const targetList: Array<{ symbol: string; name: string; sector: string }> = [];
+
+        for (const c of CRYPTO_DATABASE) {
+          symbolSet.add(c.symbol);
+          let sectorName = 'Otros';
+          if (c.category === 'layer1') sectorName = 'Layer 1';
+          else if (c.category === 'layer2') sectorName = 'Layer 2';
+          else if (c.category === 'defi') sectorName = 'DeFi';
+          else if (c.category === 'ai') sectorName = 'AI & Big Data';
+          else if (c.category === 'meme') sectorName = 'Memecoins';
+          else if (c.category === 'gaming') sectorName = 'Gaming';
+          else if (c.category === 'infrastructure') sectorName = 'RWA & Oracles';
+          else if (SECTOR_MAP[c.symbol]) sectorName = SECTOR_MAP[c.symbol];
+
+          targetList.push({ symbol: c.symbol, name: c.name, sector: sectorName });
+        }
+
+        // Rellenar con los pares USDT mas liquidos hasta llegar a 100 activos
+        const sortedUsdt = tickers
+          .filter(t => t.symbol.endsWith('USDT') && !STABLE_PAIRS.has(t.symbol) && !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
+          .sort((a, b) => parseFloat(b.quoteVolume || '0') - parseFloat(a.quoteVolume || '0'));
+
+        for (const t of sortedUsdt) {
+          if (targetList.length >= 100) break;
+          const clean = t.symbol.replace(/USDT$/i, '');
+          if (!symbolSet.has(clean) && clean.length <= 8 && !clean.includes('BUSD') && !clean.includes('DAI')) {
+            symbolSet.add(clean);
+            targetList.push({
+              symbol: clean,
+              name: clean,
+              sector: SECTOR_MAP[clean] || 'Otros'
             });
           }
         }
-        
-        results.sort((a, b) => b.quantScore - a.quantScore);
-        results.forEach((r, i) => { r.rank = i + 1; });
-        
-        setData(results);
+
+        // 3. Calculo Cuantitativo Empirico de Alta Dispersion (15 a 90)
+        const entries: ScreenerEntry[] = [];
+
+        for (const item of targetList) {
+          const t = tickerMap.get(`${item.symbol}USDT`) || tickerMap.get(item.symbol);
+          if (!t) continue;
+
+          const lastPrice = parseFloat(t.lastPrice || '0');
+          const highPrice = parseFloat(t.highPrice || '0');
+          const lowPrice = parseFloat(t.lowPrice || '0');
+          const priceChange = parseFloat(t.priceChangePercent || '0');
+          const quoteVol = parseFloat(t.quoteVolume || '0');
+
+          if (lastPrice <= 0) continue;
+
+          // A) Posicion en el rango intradiario de 24h: [0.0, 1.0]
+          const range = highPrice - lowPrice;
+          const rangePos = range > 0 ? Math.max(0, Math.min(1, (lastPrice - lowPrice) / range)) : 0.5;
+
+          // B) Estimacion de RSI intradiario realista (12 a 88)
+          const momentum = Math.max(-25, Math.min(25, priceChange * 2.2));
+          const rsiRaw = 50 + (rangePos - 0.5) * 42 + momentum * 0.85;
+          const rsi = Math.round(Math.max(12, Math.min(88, rsiRaw)));
+
+          // C) Impulso relativo vs Bitcoin (Alpha)
+          const alphaBtc = priceChange - btcChange;
+          const alphaScore = 50 + Math.max(-28, Math.min(28, alphaBtc * 3.2));
+
+          // D) Score del rango de precio
+          const rangeScore = rangePos * 100;
+
+          // E) Score de volumen relativo en escala logaritmica
+          const logVol = Math.log10(Math.max(1e5, quoteVol));
+          const volScore = Math.min(95, Math.max(25, (logVol - 5) * 14 + 40));
+
+          // F) Integracion ponderada del Quant Score
+          let rawScore = (rangeScore * 0.32) + (alphaScore * 0.30) + ((100 - Math.abs(rsi - 50) * 1.4) * 0.20) + (volScore * 0.18);
+
+          // Bonificacion por ruptura alcista con rango superior
+          if (priceChange > 3.0 && rangePos > 0.70) {
+            rawScore += 9;
+          }
+          if (priceChange > 6.0 && rangePos > 0.80) {
+            rawScore += 5;
+          }
+          // Bonificacion por fuerte alpha positivo frente a BTC
+          if (alphaBtc > 4.5) {
+            rawScore += 4;
+          }
+
+          // Oportunidad de reversion a la media por sobreventa intradiaria profunda con volumen
+          if (rsi < 34 && quoteVol > 1e7) {
+            rawScore += (34 - rsi) * 0.85;
+          }
+
+          // Penalizacion severa por desplome continuo cerca de minimos
+          if (priceChange < -4.5 && rangePos < 0.25) {
+            rawScore -= 12;
+          }
+          if (alphaBtc < -5.0) {
+            rawScore -= 6;
+          }
+
+          // Calibracion por modo de riesgo
+          if (mode === 'Seguro') {
+            rawScore = 50 + (rawScore - 50) * 0.8;
+          } else if (mode === 'Agresivo') {
+            rawScore = 50 + (rawScore - 50) * 1.15;
+          }
+
+          const quantScore = Number(Math.max(15.0, Math.min(89.5, rawScore)).toFixed(1));
+
+          // Clasificacion estricta de senales
+          let signal: Signal = 'Mantener';
+          if (quantScore >= 75) {
+            signal = 'Compra Fuerte';
+          } else if (quantScore >= 60) {
+            signal = 'Compra';
+          } else if (quantScore <= 25) {
+            signal = 'Venta Fuerte';
+          } else if (quantScore <= 40) {
+            signal = 'Venta';
+          }
+
+          // Sparkline dinamica sintetica de 7 puntos simulando el arco de 24h
+          const p1 = Number((lastPrice - (lastPrice * (priceChange / 100))).toFixed(4));
+          const pMin = lowPrice;
+          const pMax = highPrice;
+          const pMid = Number(((pMin + pMax) / 2).toFixed(4));
+          const sparklineData = [
+            p1,
+            Number((p1 * 0.6 + pMin * 0.4).toFixed(4)),
+            pMin,
+            pMid,
+            Number((pMax * 0.8 + pMid * 0.2).toFixed(4)),
+            pMax,
+            lastPrice
+          ];
+
+          entries.push({
+            rank: 0,
+            symbol: item.symbol,
+            name: item.name,
+            sector: item.sector,
+            price: lastPrice,
+            priceChange24h: priceChange,
+            quantScore,
+            signal,
+            volume24h: quoteVol,
+            rsi,
+            priceChangePeriod: priceChange,
+            volumePeriod: quoteVol,
+            sparklineData
+          });
+        }
+
+        // Ordenar inicialmente por Quant Score descendente
+        entries.sort((a, b) => b.quantScore - a.quantScore);
+        entries.forEach((r, i) => { r.rank = i + 1; });
+
+        setData(entries);
+        localStorage.setItem(cacheKey, JSON.stringify(entries));
         setLastUpdate(new Date());
       } catch (e) {
-        console.error("Fast screener error", e);
+        console.error('[Screener] Error generating empirical screener:', e);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     if (!hasCache) {
-      await runFastScreener();
+      await runEmpiricalScreener();
+    } else {
+      runEmpiricalScreener();
     }
 
+    // Si el servidor Python esta disponible en background, traer su version sincronizada
     fetchPythonScreener(timeframe, mode, 100).then(screenerData => {
-      if (screenerData && Array.isArray(screenerData)) {
+      if (screenerData && Array.isArray(screenerData) && screenerData.length > 0) {
         setData(screenerData);
         localStorage.setItem(cacheKey, JSON.stringify(screenerData));
         setLastUpdate(new Date());
       }
-      setIsLoading(false);
-    }).catch(e => {
-      console.error(e);
-      setIsLoading(false);
+    }).catch(() => {
+      // Mantener el calculo empirico del cliente sin errores
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeframe, mode]);
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000); // 1 min update
+    const interval = setInterval(fetchData, 60000); // Actualizacion cada 1 minuto
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -128,7 +316,7 @@ export default function Screener() {
   const filteredData = useMemo(() => {
     let filtered = [...data];
 
-    // Search Query
+    // Busqueda por simbolo o nombre
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(item => 
@@ -137,24 +325,27 @@ export default function Screener() {
       );
     }
 
-    // Sector
+    // Filtro por Sector
     if (sectorFilter !== 'all') {
       filtered = filtered.filter((item) => item.sector === sectorFilter);
     }
 
-    // Alpha Presets
+    // Filtros Alpha Institucionales
     if (alphaFilter === 'confluence') {
-      filtered = filtered.filter(item => (item.quantScore || 0) >= 70 && (item.rsi || 50) <= 60);
+      // 💎 Confluencia Compra: Alta probabilidad con buen score sin sobrecompra extrema
+      filtered = filtered.filter(item => (item.quantScore || 0) >= 65 && (item.rsi || 50) <= 65);
     } else if (alphaFilter === 'oversold') {
-      filtered = filtered.filter(item => (item.rsi || 50) <= 35);
+      // ⚡ Sobreventa Extrema: Suelo intradiario para rebote cuantitativo
+      filtered = filtered.filter(item => (item.rsi || 50) <= 38);
     } else if (alphaFilter === 'overbought') {
+      // ⚠️ Sobrecompra / Riesgo
       filtered = filtered.filter(item => (item.rsi || 50) >= 68 || (item.quantScore || 50) <= 35);
     } else if (alphaFilter === 'volume') {
-      // Sort by volume if available, top 15
-      filtered = filtered.sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0)).slice(0, 15);
+      // 🔥 Mayor Volumen (Top 20 mas negociadas)
+      filtered = filtered.sort((a, b) => (b.volume24h || 0) - (a.volume24h || 0)).slice(0, 20);
     }
 
-    // Sort
+    // Ordenamiento
     filtered.sort((a, b) => {
       let aVal: any = 0;
       let bVal: any = 0;
@@ -190,7 +381,7 @@ export default function Screener() {
           </h2>
           <p className="text-sm text-[var(--text-muted)] flex items-center gap-2 mt-1">
             {lastUpdate ? `Actualizado: ${lastUpdate.toLocaleTimeString()}` : 'Cargando datos...'}
-            <button onClick={() => fetchData()} className="hover:text-[var(--text-primary)] transition-colors">
+            <button onClick={() => fetchData()} className="hover:text-[var(--text-primary)] transition-colors" title="Actualizar datos">
               <RefreshCw size={12} className={isLoading ? 'animate-spin' : ''} />
             </button>
           </p>
@@ -220,7 +411,7 @@ export default function Screener() {
         <AlphaChip id="volume" label="🔥 Mayor Volumen" active={alphaFilter === 'volume'} onClick={() => setAlphaFilter('volume')} />
       </div>
 
-      {/* Sector Filters (Existing) */}
+      {/* Sector Filters */}
       <div className="flex flex-wrap gap-2 border-t border-white/5 pt-4">
         {SECTOR_KEYS.map((sector) => (
           <button
@@ -297,6 +488,11 @@ export default function Screener() {
                     <span className="text-xs text-gray-500 hidden sm:inline truncate max-w-[80px]">
                       {entry.name}
                     </span>
+                    {entry.sector && entry.sector !== 'Otros' && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 text-gray-400 hidden md:inline">
+                        {entry.sector}
+                      </span>
+                    )}
                   </div>
 
                   {/* Price */}
@@ -320,7 +516,7 @@ export default function Screener() {
                   {/* RSI */}
                   <div className="text-right font-mono font-bold text-xs"
                     style={{
-                      color: (entry.rsi || 50) < 30 ? 'var(--signal-buy)' : (entry.rsi || 50) > 70 ? 'var(--signal-sell)' : 'var(--text-secondary)',
+                      color: (entry.rsi || 50) < 35 ? 'var(--signal-buy)' : (entry.rsi || 50) > 68 ? 'var(--signal-sell)' : 'var(--text-secondary)',
                     }}
                   >
                     {typeof entry.rsi === 'number' ? entry.rsi.toFixed(1) : '50.0'}
@@ -352,7 +548,7 @@ export default function Screener() {
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center">
                     <div className="w-6 h-6 border-2 border-white/20 border-t-[var(--accent-gold)] rounded-full animate-spin mb-3"></div>
-                    Cargando screener top 100...
+                    Cargando screener cuantitativo top 100...
                   </div>
                 ) : (
                   <>
@@ -396,9 +592,11 @@ function formatPrice(price: number): string {
 
 function getScoreColor(score: number): string {
   if (score === undefined || score === null || isNaN(score)) return '#94A3B8';
-  if (score >= 70) return '#10B981'; // Compra fuerte / Compra
-  if (score <= 35) return '#EF4444'; // Venta fuerte / Venta
-  return '#F59E0B'; // Neutral
+  if (score >= 75) return '#10B981'; // Compra fuerte (Verde brillante)
+  if (score >= 60) return '#34D399'; // Compra (Esmeralda)
+  if (score <= 25) return '#EF4444'; // Venta fuerte (Rojo vivo)
+  if (score <= 40) return '#F87171'; // Venta (Rojo suave)
+  return '#F59E0B'; // Mantener (Ambar)
 }
 
 function getSignalEmoji(signal: Signal | 'all'): string {

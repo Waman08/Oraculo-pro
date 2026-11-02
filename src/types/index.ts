@@ -205,6 +205,9 @@ export interface LiquidityData {
   shortRatio: number;
   lsRatio: number;
   liquidityScore: number;
+  fundingRate?: number;
+  fundingRateAnnualized?: number;
+  source?: string;
 }
 
 export interface SupplyData {
